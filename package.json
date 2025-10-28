@@ -1,0 +1,13 @@
+{
+  "name": "zk-giftcard",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "shadcn": "^3.5.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
