@@ -81,31 +81,32 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Write comprehensive tests for data structures and default values
     - _Requirements: 1.6, 3.5, 6.5_
 
-- [ ] 3. Implement lottery creation functionality
+- [x] 3. Implement lottery creation functionality
 
-  - [ ] 3.1 Define custom errors and events
+  - [x] 3.1 Define custom errors and events
 
-    - Create custom error types for gas efficiency (InvalidPrizeSum, InvalidDeadlines, etc.)
-    - Define LotteryCreated event with all lottery parameters
-    - Define TicketCommitted, LotteryRevealed, PrizeClaimed, PrizesForfeited events
+    - ✅ Create custom error types for gas efficiency (InvalidPrizeSum, InvalidDeadlines, etc.)
+    - ✅ Define LotteryCreated event with all lottery parameters
+    - ✅ Define TicketCommitted, LotteryRevealed, PrizeClaimed, PrizesForfeited events
     - _Requirements: 1.7, 3.6, 4.10, 5.10, 6.6_
 
-  - [ ] 3.2 Create createLottery function with validation
+  - [x] 3.2 Create createLottery function with validation
 
-    - Accept creator commitment, ticket secret hashes, prize values, and deadlines
-    - Validate prize values sum equals total pool
-    - Validate deadlines are in correct order (commit < reveal < claim)
-    - Validate array lengths match (tickets and secret hashes)
-    - Generate unique lottery ID and increment counter
+    - ✅ Accept creator commitment, ticket secret hashes, prize values, and deadlines
+    - ✅ Validate prize values sum equals total pool
+    - ✅ Validate deadlines are in correct order (commit < reveal < claim)
+    - ✅ Validate array lengths match (tickets and secret hashes)
+    - ✅ Generate unique lottery ID and increment counter
     - _Requirements: 1.1, 1.3, 1.4, 1.5, 1.6_
 
-  - [ ] 3.3 Handle USDC deposit and prize pool setup
+  - [x] 3.3 Handle USDC deposit and prize pool setup
 
-    - Accept native USDC deposit from creator using Arc's native transfer
-    - Store prize values array in lottery struct
-    - Initialize lottery state to CommitOpen
-    - Set createdAt timestamp
-    - Emit LotteryCreated event with lottery details
+    - ✅ Accept native USDC deposit from creator using Arc's native transfer (using msg.value)
+    - ✅ Store prize values array in lottery struct
+    - ✅ Initialize lottery state to CommitOpen
+    - ✅ Set createdAt timestamp
+    - ✅ Emit LotteryCreated event with lottery details
+    - ✅ Add view functions for lottery data access (getLotteryStatus, getLotteryPrizes, etc.)
     - _Requirements: 1.6, 1.7, 11.1_
 
   - [ ]\* 3.4 Add optional sponsored gas pool feature
@@ -329,7 +330,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Create route for ticket redemption (fe/src/routes/ticket.tsx)
     - Create route for lottery dashboard (fe/src/routes/dashboard.tsx)
     - Create route for lottery details (fe/src/routes/lottery.$id.tsx)
-    - Update __root.tsx with navigation if needed
+    - Update \_\_root.tsx with navigation if needed
     - _Requirements: General navigation_
 
 - [ ] 12. Implement lottery creation UI
@@ -572,6 +573,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - _Requirements: 11.2_
 
   - [ ] 20.2 Build and deploy with Vite
+
     - Run bun run build in fe/ directory to create production bundle
     - Test production build locally with bun run serve
     - Deploy to Vercel/Netlify/Cloudflare Pages (connect GitHub repo)
@@ -592,25 +594,35 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 ## Implementation Status Summary
 
-### ✅ Completed (Tasks 1-2)
+### ✅ Completed (Tasks 1-3)
+
 - Project structure and development environment set up
 - Core data structures implemented (LotteryState enum, Lottery struct, TicketCommitment struct)
 - Storage mappings and state variables defined
-- Basic tests written for data structures
+- Custom errors and events defined
+- Lottery creation function with full validation implemented
+- View functions for lottery data access added
+- Comprehensive tests written for data structures and lottery creation
 
-### 🚧 In Progress (Tasks 3-20)
-- Smart contract functionality (creation, commit, reveal, claim, forfeiture)
+### 🚧 In Progress (Tasks 4-20)
+
+- Smart contract functionality (commit, reveal, claim, forfeiture)
 - Security features and access control
 - Frontend Web3 integration
 - UI components for all user flows
 - Deployment to Arc blockchain
 
 ### 📋 Next Steps
-1. Complete smart contract core functionality (tasks 3-9)
-2. Write comprehensive tests (task 10)
-3. Set up frontend Web3 integration (task 11)
-4. Build UI components (tasks 12-17)
-5. Add monitoring and deploy (tasks 18-20)
+
+1. Implement commit phase functionality (task 4)
+2. Implement reveal phase and prize assignment (task 5)
+3. Implement claim phase with gasless claiming (task 6)
+4. Implement forfeiture and rollover mechanism (task 7)
+5. Add security features and access control (task 8)
+6. Implement timeout and refund mechanism (task 9)
+7. Set up frontend Web3 integration (task 11)
+8. Build UI components (tasks 12-17)
+9. Add monitoring and deploy (tasks 18-20)
 
 ---
 
@@ -623,3 +635,19 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - Integration testing should happen after both contract and frontend are functional
 - Solady library is already installed in contract/lib/solady for gas-optimized utilities
 - Frontend already has React, TanStack Router, Tailwind, and shadcn/ui configured
+
+### ⚠️ Implementation Note: Arc Blockchain Native Currency
+
+**Arc blockchain uses native ETH as its base currency.** The current contract implementation correctly uses native ETH (msg.value) for prize pools. While the requirements mention "USDC", on Arc blockchain this should be interpreted as the native currency (ETH) or an ERC20 USDC token if needed.
+
+**Current Implementation:**
+- Uses native ETH transfers via msg.value (correct for Arc)
+- Simpler and more gas-efficient than ERC20 tokens
+- All prize amounts are in wei (18 decimals for ETH)
+
+**If USDC token support is needed later:**
+- Add ERC20 USDC handling using SafeTransferLib from Solady
+- Support both native ETH and USDC token prizes
+- Update UI to handle both 18 decimals (ETH) and 6 decimals (USDC)
+
+**For now, all references to "USDC" in tasks should be interpreted as native ETH on Arc blockchain.**

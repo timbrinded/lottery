@@ -78,12 +78,7 @@ contract LotteryFactoryTest is Test {
 
     function test_Tickets_Mapping_DefaultValues() public view {
         // Access non-existent ticket
-        (
-            address holder,
-            bool committed,
-            bool redeemed,
-            uint256 prizeAmount
-        ) = factory.tickets(999, 0);
+        (address holder, bool committed, bool redeemed, uint256 prizeAmount) = factory.tickets(999, 0);
 
         // Verify default values
         assertEq(holder, address(0), "Default holder should be zero address");
@@ -100,16 +95,511 @@ contract LotteryFactoryTest is Test {
     }
 
     function testFuzz_Tickets_DefaultValuesForAnyIndex(uint256 lotteryId, uint256 ticketIndex) public view {
-        (
-            address holder,
-            bool committed,
-            bool redeemed,
-            uint256 prizeAmount
-        ) = factory.tickets(lotteryId, ticketIndex);
+        (address holder, bool committed, bool redeemed, uint256 prizeAmount) = factory.tickets(lotteryId, ticketIndex);
 
         assertEq(holder, address(0), "Holder should be zero address");
         assertFalse(committed, "Committed should be false");
         assertFalse(redeemed, "Redeemed should be false");
         assertEq(prizeAmount, 0, "Prize amount should be 0");
+    }
+
+    // ============ CreateLottery Tests ============
+
+    function test_CreateLottery_Success() public {
+        // Setup test data
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 100e6; // 100 USDC
+        prizeValues[1] = 50e6; // 50 USDC
+        prizeValues[2] = 25e6; // 25 USDC
+
+        uint256 totalPrize = 175e6; // 175 USDC total
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        // Create lottery
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+
+        // Verify lottery ID and counter
+        assertEq(lotteryId, 1, "First lottery should have ID 1");
+        assertEq(factory.lotteryCounter(), 2, "Counter should increment to 2");
+
+        // Verify lottery data in separate calls to avoid stack too deep
+        (address creator, bytes32 storedCommitment, uint256 storedPrizePool,,,,,,,,) = factory.lotteries(lotteryId);
+
+        assertEq(creator, address(this), "Creator should be test contract");
+        assertEq(storedCommitment, creatorCommitment, "Commitment should match");
+        assertEq(storedPrizePool, totalPrize, "Prize pool should match");
+    }
+
+    function test_CreateLottery_VerifiesDeadlines() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+
+        (
+            ,
+            ,
+            ,
+            uint256 storedCommitDeadline,
+            uint256 storedRevealTime,
+            uint256 storedClaimDeadline,
+            ,
+            LotteryFactory.LotteryState state,
+            uint256 createdAt,
+            ,
+        ) = factory.lotteries(lotteryId);
+
+        assertEq(storedCommitDeadline, commitDeadline, "Commit deadline should match");
+        assertEq(storedRevealTime, revealTime, "Reveal time should match");
+        assertEq(storedClaimDeadline, revealTime + 24 hours, "Claim deadline should be reveal + 24h");
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
+        assertEq(createdAt, block.timestamp, "Created at should be current timestamp");
+    }
+
+    function test_CreateLottery_EmitsEvent() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+
+        uint256 totalPrize = 100e6;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        // Expect event emission
+        vm.expectEmit(true, true, false, true);
+        emit LotteryCreated(1, address(this), totalPrize, 2, commitDeadline, revealTime);
+
+        factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+    }
+
+    // Event declaration for testing
+    event LotteryCreated(
+        uint256 indexed lotteryId,
+        address indexed creator,
+        uint256 totalPrizePool,
+        uint256 numberOfTickets,
+        uint256 commitDeadline,
+        uint256 revealTime
+    );
+
+    function test_CreateLottery_RevertsOnEmptyPrizeArray() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](0); // Empty array
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        vm.expectRevert(LotteryFactory.EmptyPrizeArray.selector);
+        factory.createLottery{value: 0}(creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime);
+    }
+
+    function test_CreateLottery_RevertsOnEmptyTicketsArray() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](0); // Empty array
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 100e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        vm.expectRevert(LotteryFactory.EmptyTicketsArray.selector);
+        factory.createLottery{value: 100e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+    }
+
+    function test_CreateLottery_RevertsOnArrayLengthMismatch() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](3); // Different length
+        prizeValues[0] = 50e6;
+        prizeValues[1] = 30e6;
+        prizeValues[2] = 20e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        vm.expectRevert(LotteryFactory.ArrayLengthMismatch.selector);
+        factory.createLottery{value: 100e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+    }
+
+    function test_CreateLottery_RevertsOnInvalidPrizeSum() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+        // Total is 100 USDC but sending 90 USDC
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        vm.expectRevert(LotteryFactory.InvalidPrizeSum.selector);
+        factory.createLottery{value: 90e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+    }
+
+    function test_CreateLottery_RevertsOnInvalidDeadlines() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+
+        uint256 commitDeadline = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours; // Reveal before commit!
+
+        vm.expectRevert(LotteryFactory.InvalidDeadlines.selector);
+        factory.createLottery{value: 100e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+    }
+
+    function test_CreateLottery_RevertsOnEqualDeadlines() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+
+        uint256 deadline = block.timestamp + 1 hours;
+
+        vm.expectRevert(LotteryFactory.InvalidDeadlines.selector);
+        factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            deadline,
+            deadline // Same as commit deadline
+        );
+    }
+
+    function test_CreateLottery_MultipleSequential() public {
+        bytes32 commitment1 = keccak256("secret1");
+        bytes32[] memory tickets1 = new bytes32[](1);
+        tickets1[0] = keccak256("ticket1");
+        uint256[] memory prizes1 = new uint256[](1);
+        prizes1[0] = 50e6;
+
+        bytes32 commitment2 = keccak256("secret2");
+        bytes32[] memory tickets2 = new bytes32[](2);
+        tickets2[0] = keccak256("ticket2_0");
+        tickets2[1] = keccak256("ticket2_1");
+        uint256[] memory prizes2 = new uint256[](2);
+        prizes2[0] = 30e6;
+        prizes2[1] = 20e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        // Create first lottery
+        uint256 id1 = factory.createLottery{value: 50e6}(commitment1, tickets1, prizes1, commitDeadline, revealTime);
+
+        // Create second lottery
+        uint256 id2 = factory.createLottery{value: 50e6}(commitment2, tickets2, prizes2, commitDeadline, revealTime);
+
+        assertEq(id1, 1, "First lottery ID should be 1");
+        assertEq(id2, 2, "Second lottery ID should be 2");
+        assertEq(factory.lotteryCounter(), 3, "Counter should be 3");
+    }
+
+    function testFuzz_CreateLottery_ValidInputs(uint8 numTickets, uint256 totalPrize, uint256 timeOffset) public {
+        // Bound inputs to reasonable ranges
+        numTickets = uint8(bound(numTickets, 1, 100));
+        totalPrize = bound(totalPrize, uint256(numTickets) * 1e6, 1_000_000e6); // Min 1 USDC per ticket, max 1M USDC
+        timeOffset = bound(timeOffset, 2 hours, 365 days); // At least 2 hours to allow commit + reveal
+
+        // Setup arrays
+        bytes32[] memory ticketSecretHashes = new bytes32[](numTickets);
+        uint256[] memory prizeValues = new uint256[](numTickets);
+
+        // Distribute prizes evenly
+        uint256 prizePerTicket = totalPrize / numTickets;
+        uint256 remainder = totalPrize % numTickets;
+
+        for (uint256 i = 0; i < numTickets; i++) {
+            ticketSecretHashes[i] = keccak256(abi.encodePacked("ticket", i));
+            prizeValues[i] = prizePerTicket;
+        }
+        // Add remainder to first prize
+        prizeValues[0] += remainder;
+
+        bytes32 creatorCommitment = keccak256("fuzz_secret");
+        uint256 commitDeadline = block.timestamp + (timeOffset / 2);
+        uint256 revealTime = block.timestamp + timeOffset;
+
+        // Should succeed
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime
+        );
+
+        assertEq(lotteryId, 1, "Lottery ID should be 1");
+
+        // Verify stored data
+        (address creator,, uint256 storedPrizePool,,,,, LotteryFactory.LotteryState state,,,) =
+            factory.lotteries(lotteryId);
+
+        assertEq(creator, address(this), "Creator should match");
+        assertEq(storedPrizePool, totalPrize, "Prize pool should match");
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
+    }
+
+    // ============ Accessor Function Tests ============
+
+    function test_GetLotteryStatus() public {
+        // Create lottery
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            revealTime
+        );
+
+        // Test accessor
+        (
+            LotteryFactory.LotteryState state,
+            uint256 returnedCommitDeadline,
+            uint256 returnedRevealTime,
+            uint256 returnedClaimDeadline,
+            uint256 returnedCreatedAt
+        ) = factory.getLotteryStatus(lotteryId);
+
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
+        assertEq(returnedCommitDeadline, commitDeadline, "Commit deadline should match");
+        assertEq(returnedRevealTime, revealTime, "Reveal time should match");
+        assertEq(returnedClaimDeadline, revealTime + 24 hours, "Claim deadline should be reveal + 24h");
+        assertEq(returnedCreatedAt, block.timestamp, "Created at should match");
+    }
+
+    function test_GetLotteryPrizes() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+        
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 100e6;
+        prizeValues[1] = 50e6;
+        prizeValues[2] = 25e6;
+        
+        uint256 totalPrize = 175e6;
+
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Test accessor
+        (uint256 returnedTotal, uint256[] memory returnedPrizes) = factory.getLotteryPrizes(lotteryId);
+
+        assertEq(returnedTotal, totalPrize, "Total prize should match");
+        assertEq(returnedPrizes.length, 3, "Should have 3 prizes");
+        assertEq(returnedPrizes[0], 100e6, "Prize 0 should match");
+        assertEq(returnedPrizes[1], 50e6, "Prize 1 should match");
+        assertEq(returnedPrizes[2], 25e6, "Prize 2 should match");
+    }
+
+    function test_GetLotteryCreator() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Test accessor
+        (address returnedCreator, bytes32 returnedCommitment) = factory.getLotteryCreator(lotteryId);
+
+        assertEq(returnedCreator, address(this), "Creator should match");
+        assertEq(returnedCommitment, creatorCommitment, "Commitment should match");
+    }
+
+    function test_GetLotteryTickets() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+        
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 50e6;
+        prizeValues[1] = 30e6;
+        prizeValues[2] = 20e6;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Test accessor
+        bytes32[] memory returnedTickets = factory.getLotteryTickets(lotteryId);
+
+        assertEq(returnedTickets.length, 3, "Should have 3 tickets");
+        assertEq(returnedTickets[0], ticketSecretHashes[0], "Ticket 0 should match");
+        assertEq(returnedTickets[1], ticketSecretHashes[1], "Ticket 1 should match");
+        assertEq(returnedTickets[2], ticketSecretHashes[2], "Ticket 2 should match");
+    }
+
+    function test_GetLotteryReveal() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Test accessor (before reveal)
+        (uint256 randomSeed, LotteryFactory.LotteryState state) = factory.getLotteryReveal(lotteryId);
+
+        assertEq(randomSeed, 0, "Random seed should be 0 before reveal");
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
+    }
+
+    function test_IsCommitPeriodOpen() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Should be open initially
+        assertTrue(factory.isCommitPeriodOpen(lotteryId), "Commit period should be open");
+
+        // Warp past deadline
+        vm.warp(commitDeadline + 1);
+        assertFalse(factory.isCommitPeriodOpen(lotteryId), "Commit period should be closed after deadline");
+    }
+
+    function test_IsRevealReady() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Should not be ready initially (still in CommitOpen state)
+        assertFalse(factory.isRevealReady(lotteryId), "Should not be ready in CommitOpen state");
+    }
+
+    function test_IsClaimPeriodActive() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Should not be active initially (not revealed yet)
+        assertFalse(factory.isClaimPeriodActive(lotteryId), "Should not be active before reveal");
     }
 }
