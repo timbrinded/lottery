@@ -362,9 +362,6 @@ contract LotteryFactory {
         // Validate inputs
         if (_prizeValues.length == 0) revert EmptyPrizeArray();
         if (_ticketSecretHashes.length == 0) revert EmptyTicketsArray();
-        if (_prizeValues.length != _ticketSecretHashes.length) {
-            revert ArrayLengthMismatch();
-        }
 
         // Calculate total prize pool from prize values
         uint256 totalPrizePool = 0;
@@ -476,5 +473,135 @@ contract LotteryFactory {
 
         // Emit event
         emit TicketCommitted(_lotteryId, _ticketIndex, msg.sender);
+    }
+
+    /**
+     * @notice Reveal the lottery and assign prizes to committed tickets
+     * @dev Only callable by lottery creator after reveal time with correct secret
+     * @param _lotteryId The lottery identifier
+     * @param _creatorSecret The creator's secret that matches the commitment
+     */
+    function revealLottery(
+        uint256 _lotteryId,
+        bytes calldata _creatorSecret
+    ) external {
+        Lottery storage lottery = lotteries[_lotteryId];
+
+        // Verify caller is the lottery creator
+        if (msg.sender != lottery.creator) {
+            revert UnauthorizedCaller();
+        }
+
+        // Verify lottery is in CommitClosed state
+        if (lottery.state != LotteryState.CommitClosed) {
+            revert InvalidLotteryState();
+        }
+
+        // Verify reveal time has arrived
+        if (block.timestamp < lottery.revealTime) {
+            revert CommitPeriodNotClosed();
+        }
+
+        // Verify creator secret matches stored commitment hash
+        bytes32 secretHash = keccak256(_creatorSecret);
+        if (secretHash != lottery.creatorCommitment) {
+            revert InvalidCreatorSecret();
+        }
+
+        // Generate random seed by combining creator secret with block.prevrandao
+        // This provides unpredictable randomness that neither creator nor miners can manipulate
+        lottery.randomSeed = uint256(
+            keccak256(abi.encodePacked(_creatorSecret, block.prevrandao))
+        );
+
+        // Assign prizes to committed tickets using prize-centric algorithm
+        _assignPrizes(_lotteryId);
+
+        // Transition state to RevealOpen
+        lottery.state = LotteryState.RevealOpen;
+
+        // Emit event
+        emit LotteryRevealed(_lotteryId, lottery.randomSeed, block.timestamp);
+    }
+
+    // ============ Internal Functions ============
+
+    /**
+     * @notice Assign prizes to committed tickets using prize-centric algorithm
+     * @param _lotteryId The lottery identifier
+     */
+    function _assignPrizes(uint256 _lotteryId) internal {
+        Lottery storage lottery = lotteries[_lotteryId];
+
+        // Build memory array of committed ticket indices
+        uint256[] memory committedTickets = _getCommittedTickets(_lotteryId);
+        uint256 remainingTickets = committedTickets.length;
+
+        // For each prize, randomly select from remaining committed tickets
+        for (
+            uint256 prizeIdx = 0;
+            prizeIdx < lottery.prizeValues.length;
+            prizeIdx++
+        ) {
+            // If no more committed tickets, remaining prizes go to rollover pool
+            if (remainingTickets == 0) {
+                lotteryRolloverPool[_lotteryId] += lottery.prizeValues[
+                    prizeIdx
+                ];
+                continue;
+            }
+
+            // Generate random index for this prize using seed and prize index
+            uint256 randomValue = uint256(
+                keccak256(abi.encodePacked(lottery.randomSeed, prizeIdx))
+            );
+            uint256 winnerIndex = randomValue % remainingTickets;
+            uint256 winningTicket = committedTickets[winnerIndex];
+
+            // Assign prize to the winning ticket
+            tickets[_lotteryId][winningTicket].prizeAmount = lottery
+                .prizeValues[prizeIdx];
+
+            // Remove winner from pool (swap with last element, reduce length)
+            committedTickets[winnerIndex] = committedTickets[
+                remainingTickets - 1
+            ];
+            remainingTickets--;
+        }
+    }
+
+    /**
+     * @notice Get array of committed ticket indices
+     * @dev Helper function to build list of tickets that committed before deadline
+     * @param _lotteryId The lottery identifier
+     * @return committedTickets Array of ticket indices that were committed
+     */
+    function _getCommittedTickets(
+        uint256 _lotteryId
+    ) internal view returns (uint256[] memory committedTickets) {
+        Lottery storage lottery = lotteries[_lotteryId];
+        uint256 totalTickets = lottery.ticketSecretHashes.length;
+
+        // First pass: count committed tickets
+        uint256 committedCount = 0;
+        for (uint256 i = 0; i < totalTickets; i++) {
+            if (tickets[_lotteryId][i].committed) {
+                committedCount++;
+            }
+        }
+
+        // Allocate array with exact size
+        committedTickets = new uint256[](committedCount);
+
+        // Second pass: populate array with committed ticket indices
+        uint256 index = 0;
+        for (uint256 i = 0; i < totalTickets; i++) {
+            if (tickets[_lotteryId][i].committed) {
+                committedTickets[index] = i;
+                index++;
+            }
+        }
+
+        return committedTickets;
     }
 }

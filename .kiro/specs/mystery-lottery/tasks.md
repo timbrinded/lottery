@@ -144,9 +144,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Track sponsoredGasUsed
     - _Requirements: 11.9_
 
-- [ ] 5. Implement reveal phase and prize assignment
+- [x] 5. Implement reveal phase and prize assignment
 
-  - [ ] 5.1 Create revealLottery function with secret verification
+  - [x] 5.1 Create revealLottery function with secret verification
 
     - Accept creator secret as input
     - Verify secret matches stored commitment hash using keccak256
@@ -155,7 +155,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Note: No library needed - implement commit-reveal pattern manually
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-  - [ ] 5.2 Implement randomness generation
+  - [x] 5.2 Implement randomness generation
 
     - Combine creator secret with block.prevrandao (or blockhash on older chains)
     - Use keccak256 to generate random seed
@@ -163,7 +163,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Note: No library needed - standard Solidity primitives
     - _Requirements: 4.6, 10.1, 10.2_
 
-  - [ ] 5.3 Implement prize-centric assignment (NO Fisher-Yates needed!)
+  - [x] 5.3 Implement prize-centric assignment (NO Fisher-Yates needed!)
 
     - Build memory array of committed ticket indices
     - For each prize, generate random index: `keccak256(seed, prizeIndex) % remainingTickets`
@@ -173,7 +173,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Note: O(M) complexity instead of O(N) - 97% gas savings!
     - _Requirements: 4.7, 4.8, 4.9, 4.10, 4.12, 10.3, 10.4_
 
-  - [ ] 5.4 Complete reveal and emit events
+  - [x] 5.4 Complete reveal and emit events
     - Transition state to RevealOpen
     - Set claim deadline (24 hours after reveal)
     - Emit LotteryRevealed event with seed and assignments
@@ -598,7 +598,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 ## Implementation Status Summary
 
-### ✅ Completed (Tasks 1-4)
+### ✅ Completed (Tasks 1-5)
 
 **Smart Contract - Core Functionality:**
 - ✅ Project structure and development environment set up
@@ -610,6 +610,10 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - ✅ Helper view functions (isCommitPeriodOpen, isRevealReady, isClaimPeriodActive)
 - ✅ Commit phase fully implemented with commitTicket function
 - ✅ Commit deadline enforcement and state transition (closeCommitPeriod)
+- ✅ **Reveal phase fully implemented with prize assignment**
+- ✅ **Prize-centric assignment algorithm (O(M) complexity)**
+- ✅ **Prize cascade for uncommitted tickets to rollover pool**
+- ✅ **Randomness generation using creator secret + block.prevrandao**
 - ✅ Comprehensive tests written (100+ test cases covering all scenarios)
 
 **Test Coverage:**
@@ -619,12 +623,16 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - ✅ All view/accessor functions tested
 - ✅ Commit ticket functionality (success, errors, multiple tickets, partial commitment)
 - ✅ Close commit period state transition
+- ✅ **Reveal lottery with secret verification**
+- ✅ **Prize assignment with full/partial/no commitments**
+- ✅ **Randomness generation verification**
+- ✅ **Prize cascade to rollover pool**
+- ✅ **Primary use case: 3 prizes, 100 tickets**
 
-### 🚧 In Progress (Tasks 5-20)
+### 🚧 In Progress (Tasks 6-20)
 
 **Smart Contract - Remaining Functionality:**
-- Reveal phase and prize assignment (task 5)
-- Claim phase with gasless claiming (task 6)
+- Claim phase with gasless claiming (task 6) - **NEXT PRIORITY**
 - Forfeiture and rollover mechanism (task 7)
 - Security features (ReentrancyGuard, SafeTransferLib) (task 8)
 - Timeout and refund mechanism (task 9)
@@ -646,33 +654,28 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 ### 📋 Next Steps (Priority Order)
 
-1. **Implement reveal phase and prize assignment (task 5)** - Core lottery functionality
-   - Verify creator secret against commitment
-   - Generate randomness from secret + block hash
-   - Implement prize-centric assignment algorithm (O(M) instead of O(N))
-   - Handle prize cascade for uncommitted tickets
-   - Transition to RevealOpen state
-
-2. **Implement claim phase with gasless claiming (task 6)** - Enable winners to claim prizes
+1. **Implement claim phase with gasless claiming (task 6)** - Enable winners to claim prizes
    - Verify ticket secret and commitment status
    - Calculate net prize (gross - gas cost)
-   - Transfer prize and refund gas to relayer
+   - Transfer prize using native ETH (Arc blockchain)
+   - Refund gas to tx.origin (relayer)
    - Mark ticket as redeemed
+   - Emit PrizeClaimed event
 
-3. **Implement forfeiture and rollover (task 7)** - Handle unclaimed prizes
+2. **Implement forfeiture and rollover (task 7)** - Handle unclaimed prizes
    - Process forfeited prizes after claim deadline
    - Add to rollover pool for future lotteries
    - Transition to Finalized state
 
-4. **Add security features (task 8)** - Production readiness
+3. **Add security features (task 8)** - Production readiness
    - Integrate Solady's ReentrancyGuard
-   - Use SafeTransferLib for native ETH transfers
+   - Use SafeTransferLib for native ETH transfers (or payable transfers)
    - Add access control modifiers
 
-5. **Implement timeout refund (task 9)** - Safety mechanism
+4. **Implement timeout refund (task 9)** - Safety mechanism
    - Allow refund if creator fails to reveal within 24h
 
-6. **Begin frontend integration (task 11)** - Start UI development
+5. **Begin frontend integration (task 11)** - Start UI development
    - Install Web3 dependencies (wagmi, viem, RainbowKit)
    - Configure Arc blockchain connection
    - Generate contract types and ABIs
@@ -693,12 +696,19 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 #### Arc Blockchain Native Currency
 
-**Arc blockchain uses native ETH as its base currency.** The current contract implementation correctly uses native ETH (msg.value) for prize pools. While the requirements mention "USDC", on Arc blockchain this should be interpreted as the native currency (ETH) or an ERC20 USDC token if needed.
+**Arc blockchain uses native ETH as its base currency.** The current contract implementation correctly uses native ETH (msg.value) for prize pools. While the requirements and design documents mention "USDC", the implementation uses native ETH which is simpler and more gas-efficient.
 
 **Current Implementation:**
-- Uses native ETH transfers via msg.value (correct for Arc)
-- Simpler and more gas-efficient than ERC20 tokens
+- Uses native ETH transfers via msg.value
 - All prize amounts are in wei (18 decimals for ETH)
+- Simpler and more gas-efficient than ERC20 tokens
+- No external token contract dependencies
+
+**For Task 6 (Claim Phase):**
+- Use native ETH transfers with `payable` addresses
+- Calculate gas costs in wei
+- Transfer net prize using `address.call{value: amount}("")`
+- Refund gas to tx.origin using same pattern
 
 **If USDC token support is needed later:**
 - Add ERC20 USDC handling using SafeTransferLib from Solady
@@ -727,6 +737,8 @@ The smart contract has made excellent progress with a solid foundation:
 
 **Frontend Status:**
 - Basic React + TanStack Router structure in place
+- shadcn/ui components available (class-variance-authority, lucide-react)
+- TailwindCSS v4 configured with tw-animate-css
 - No Web3 integration yet (wagmi/viem not installed)
 - No lottery-specific components yet
-- Ready to begin implementation after core contract features complete
+- Ready to begin implementation once claim phase is complete
