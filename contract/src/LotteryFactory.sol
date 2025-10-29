@@ -524,6 +524,75 @@ contract LotteryFactory {
         emit LotteryRevealed(_lotteryId, lottery.randomSeed, block.timestamp);
     }
 
+    /**
+     * @notice Claim a prize for a winning ticket with gasless claiming
+     * @dev Gas cost is automatically deducted from prize amount
+     * @param _lotteryId The lottery identifier
+     * @param _ticketIndex Index of the ticket to claim
+     * @param _ticketSecret The ticket secret that matches the stored hash
+     */
+    function claimPrize(
+        uint256 _lotteryId,
+        uint256 _ticketIndex,
+        bytes calldata _ticketSecret
+    ) external {
+        Lottery storage lottery = lotteries[_lotteryId];
+        TicketCommitment storage ticket = tickets[_lotteryId][_ticketIndex];
+
+        // Verify lottery is in RevealOpen state
+        if (lottery.state != LotteryState.RevealOpen) {
+            revert InvalidLotteryState();
+        }
+
+        // Verify user committed before deadline
+        if (!ticket.committed) {
+            revert TicketNotCommitted();
+        }
+
+        // Verify ticket secret matches stored hash
+        bytes32 secretHash = keccak256(_ticketSecret);
+        if (lottery.ticketSecretHashes[_ticketIndex] != secretHash) {
+            revert InvalidTicketSecret();
+        }
+
+        // Verify ticket has not been redeemed
+        if (ticket.redeemed) {
+            revert TicketAlreadyRedeemed();
+        }
+
+        // Get gross prize amount
+        uint256 grossPrize = ticket.prizeAmount;
+
+        // Estimate gas cost in wei (native ETH on Arc)
+        // Using a fixed estimate for simplicity: 50,000 gas * current gas price
+        uint256 gasCost = 50000 * tx.gasprice;
+
+        // Calculate net prize (gross - gas)
+        // Note: If prize is 0 (losing ticket), this will revert with underflow
+        uint256 netPrize = grossPrize - gasCost;
+
+        // Mark ticket as redeemed (state update before external calls)
+        ticket.redeemed = true;
+
+        // Transfer net prize to winner
+        (bool successWinner, ) = payable(msg.sender).call{value: netPrize}("");
+        require(successWinner, "Transfer to winner failed");
+
+        // Refund gas cost to tx.origin (relayer/caller)
+        (bool successRelayer, ) = payable(tx.origin).call{value: gasCost}("");
+        require(successRelayer, "Gas refund failed");
+
+        // Emit event with gross, net, and gas amounts
+        emit PrizeClaimed(
+            _lotteryId,
+            _ticketIndex,
+            msg.sender,
+            grossPrize,
+            netPrize,
+            gasCost
+        );
+    }
+
     // ============ Internal Functions ============
 
     /**
