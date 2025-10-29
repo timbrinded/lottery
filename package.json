@@ -3,6 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "forge:install": "cd contract && forge install",
+    "forge:build": "cd contract && forge build",
+    "forge:test": "cd contract && forge test",
+    "fe:dev": "cd fe && bun dev"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "shadcn": "^3.5.0"
