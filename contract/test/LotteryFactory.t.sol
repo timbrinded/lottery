@@ -602,4 +602,385 @@ contract LotteryFactoryTest is Test {
         // Should not be active initially (not revealed yet)
         assertFalse(factory.isClaimPeriodActive(lotteryId), "Should not be active before reveal");
     }
+
+    // ============ CommitTicket Tests ============
+
+    event TicketCommitted(uint256 indexed lotteryId, uint256 indexed ticketIndex, address holder);
+
+    function test_CommitTicket_Success() public {
+        // Create lottery
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32 ticketSecret = bytes32("ticket_secret_0");
+        bytes32 ticketSecretHash = keccak256(abi.encodePacked(ticketSecret));
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = ticketSecretHash;
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Commit ticket as different user
+        address user = address(0x123);
+        vm.prank(user);
+        factory.commitTicket(lotteryId, 0, ticketSecretHash);
+
+        // Verify ticket commitment
+        (address holder, bool committed, bool redeemed, uint256 prizeAmount) = factory.tickets(lotteryId, 0);
+        
+        assertEq(holder, user, "Holder should be user");
+        assertTrue(committed, "Ticket should be committed");
+        assertFalse(redeemed, "Ticket should not be redeemed");
+        assertEq(prizeAmount, 0, "Prize amount should be 0 before reveal");
+    }
+
+    function test_CommitTicket_EmitsEvent() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32 ticketSecretHash = keccak256("ticket_0");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = ticketSecretHash;
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        address user = address(0x456);
+        
+        // Expect event emission
+        vm.expectEmit(true, true, false, true);
+        emit TicketCommitted(lotteryId, 0, user);
+        
+        vm.prank(user);
+        factory.commitTicket(lotteryId, 0, ticketSecretHash);
+    }
+
+    function test_CommitTicket_RevertsAfterDeadline() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32 ticketSecretHash = keccak256("ticket_0");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = ticketSecretHash;
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Warp past deadline
+        vm.warp(commitDeadline + 1);
+
+        // Should revert
+        vm.expectRevert(LotteryFactory.CommitDeadlinePassed.selector);
+        factory.commitTicket(lotteryId, 0, ticketSecretHash);
+    }
+
+    function test_CommitTicket_RevertsOnInvalidTicketIndex() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32 ticketSecretHash = keccak256("ticket_0");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = ticketSecretHash;
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Try to commit with invalid index (out of bounds)
+        vm.expectRevert(LotteryFactory.InvalidTicketIndex.selector);
+        factory.commitTicket(lotteryId, 5, ticketSecretHash);
+    }
+
+    function test_CommitTicket_RevertsOnInvalidSecret() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32 ticketSecretHash = keccak256("ticket_0");
+        bytes32 wrongSecretHash = keccak256("wrong_secret");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = ticketSecretHash;
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        // Try to commit with wrong secret hash
+        vm.expectRevert(LotteryFactory.InvalidTicketSecret.selector);
+        factory.commitTicket(lotteryId, 0, wrongSecretHash);
+    }
+
+    function test_CommitTicket_RevertsOnDoubleCommit() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32 ticketSecretHash = keccak256("ticket_0");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = ticketSecretHash;
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        address user = address(0x789);
+        
+        // First commit should succeed
+        vm.prank(user);
+        factory.commitTicket(lotteryId, 0, ticketSecretHash);
+
+        // Second commit should revert
+        vm.prank(user);
+        vm.expectRevert(LotteryFactory.TicketAlreadyCommitted.selector);
+        factory.commitTicket(lotteryId, 0, ticketSecretHash);
+    }
+
+    function test_CommitTicket_MultipleTickets() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+        
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 50e6;
+        prizeValues[1] = 30e6;
+        prizeValues[2] = 20e6;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        address user1 = address(0x111);
+        address user2 = address(0x222);
+        address user3 = address(0x333);
+
+        // Commit all tickets
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+        
+        vm.prank(user2);
+        factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
+        
+        vm.prank(user3);
+        factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
+
+        // Verify all commitments
+        (address holder0, bool committed0,,) = factory.tickets(lotteryId, 0);
+        (address holder1, bool committed1,,) = factory.tickets(lotteryId, 1);
+        (address holder2, bool committed2,,) = factory.tickets(lotteryId, 2);
+
+        assertEq(holder0, user1, "Ticket 0 holder should be user1");
+        assertEq(holder1, user2, "Ticket 1 holder should be user2");
+        assertEq(holder2, user3, "Ticket 2 holder should be user3");
+        assertTrue(committed0, "Ticket 0 should be committed");
+        assertTrue(committed1, "Ticket 1 should be committed");
+        assertTrue(committed2, "Ticket 2 should be committed");
+    }
+
+    function test_CommitTicket_PartialCommitment() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+        
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 50e6;
+        prizeValues[1] = 30e6;
+        prizeValues[2] = 20e6;
+
+        uint256 lotteryId = factory.createLottery{value: 100e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 2 hours
+        );
+
+        address user1 = address(0x111);
+
+        // Only commit one ticket
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Verify only ticket 0 is committed
+        (address holder0, bool committed0,,) = factory.tickets(lotteryId, 0);
+        (address holder1, bool committed1,,) = factory.tickets(lotteryId, 1);
+        (address holder2, bool committed2,,) = factory.tickets(lotteryId, 2);
+
+        assertEq(holder0, user1, "Ticket 0 holder should be user1");
+        assertEq(holder1, address(0), "Ticket 1 holder should be zero");
+        assertEq(holder2, address(0), "Ticket 2 holder should be zero");
+        assertTrue(committed0, "Ticket 0 should be committed");
+        assertFalse(committed1, "Ticket 1 should not be committed");
+        assertFalse(committed2, "Ticket 2 should not be committed");
+    }
+
+    // ============ CloseCommitPeriod Tests ============
+
+    function test_CloseCommitPeriod_Success() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Verify initial state
+        (,,,,,,, LotteryFactory.LotteryState stateBefore,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(stateBefore), uint8(LotteryFactory.LotteryState.CommitOpen), "Should be CommitOpen");
+
+        // Warp past deadline
+        vm.warp(commitDeadline + 1);
+
+        // Close commit period
+        factory.closeCommitPeriod(lotteryId);
+
+        // Verify state changed
+        (,,,,,,, LotteryFactory.LotteryState stateAfter,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(stateAfter), uint8(LotteryFactory.LotteryState.CommitClosed), "Should be CommitClosed");
+    }
+
+    function test_CloseCommitPeriod_RevertsBeforeDeadline() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Try to close before deadline
+        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
+        factory.closeCommitPeriod(lotteryId);
+    }
+
+    function test_CloseCommitPeriod_RevertsIfNotCommitOpen() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Warp past deadline and close
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Try to close again
+        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
+        factory.closeCommitPeriod(lotteryId);
+    }
+
+    function test_CloseCommitPeriod_CanBeCalledByAnyone() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 50e6;
+        
+        uint256 commitDeadline = block.timestamp + 1 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 2 hours
+        );
+
+        // Warp past deadline
+        vm.warp(commitDeadline + 1);
+
+        // Call from different address
+        address randomUser = address(0x999);
+        vm.prank(randomUser);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Verify state changed
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitClosed), "Should be CommitClosed");
+    }
 }

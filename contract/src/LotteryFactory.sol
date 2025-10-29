@@ -114,6 +114,15 @@ contract LotteryFactory {
     /// @notice Thrown when ticket secret hashes array is empty
     error EmptyTicketsArray();
 
+    /// @notice Thrown when ticket index is out of bounds
+    error InvalidTicketIndex();
+
+    /// @notice Thrown when ticket has already been committed
+    error TicketAlreadyCommitted();
+
+    /// @notice Thrown when lottery is not in the expected state for the operation
+    error InvalidLotteryState();
+
     // ============ Events ============
 
     /**
@@ -399,5 +408,73 @@ contract LotteryFactory {
             _commitDeadline,
             _revealTime
         );
+    }
+
+    /**
+     * @notice Update lottery state to CommitClosed if deadline has passed
+     * @dev Can be called by anyone to transition state after commit deadline
+     * @param _lotteryId The lottery identifier
+     */
+    function closeCommitPeriod(uint256 _lotteryId) external {
+        Lottery storage lottery = lotteries[_lotteryId];
+
+        // Verify lottery is in CommitOpen state
+        if (lottery.state != LotteryState.CommitOpen) {
+            revert InvalidLotteryState();
+        }
+
+        // Verify commit deadline has passed
+        if (block.timestamp < lottery.commitDeadline) {
+            revert CommitPeriodNotClosed();
+        }
+
+        // Transition state to CommitClosed
+        lottery.state = LotteryState.CommitClosed;
+    }
+
+    /**
+     * @notice Commit a ticket to participate in the lottery
+     * @dev User must commit before the deadline to be eligible for prizes
+     * @param _lotteryId The lottery identifier
+     * @param _ticketIndex Index of the ticket to commit
+     * @param _ticketSecretHash Hash of the ticket secret for later verification
+     */
+    function commitTicket(
+        uint256 _lotteryId,
+        uint256 _ticketIndex,
+        bytes32 _ticketSecretHash
+    ) external {
+        Lottery storage lottery = lotteries[_lotteryId];
+
+        // Verify commit deadline has not passed
+        if (block.timestamp >= lottery.commitDeadline) {
+            revert CommitDeadlinePassed();
+        }
+
+        // Verify ticket index is valid
+        if (_ticketIndex >= lottery.ticketSecretHashes.length) {
+            revert InvalidTicketIndex();
+        }
+
+        // Verify ticket secret hash matches the one stored during creation
+        if (lottery.ticketSecretHashes[_ticketIndex] != _ticketSecretHash) {
+            revert InvalidTicketSecret();
+        }
+
+        // Verify ticket hasn't already been committed
+        if (tickets[_lotteryId][_ticketIndex].committed) {
+            revert TicketAlreadyCommitted();
+        }
+
+        // Store ticket commitment with holder address
+        tickets[_lotteryId][_ticketIndex] = TicketCommitment({
+            holder: msg.sender,
+            committed: true,
+            redeemed: false,
+            prizeAmount: 0
+        });
+
+        // Emit event
+        emit TicketCommitted(_lotteryId, _ticketIndex, msg.sender);
     }
 }

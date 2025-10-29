@@ -115,22 +115,26 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Validate gas pool amount is sufficient for expected commits
     - _Requirements: 11.9_
 
-- [ ] 4. Implement commit phase functionality
+- [x] 4. Implement commit phase functionality
 
-  - [ ] 4.1 Create commitTicket function
+  - [x] 4.1 Create commitTicket function
 
-    - Verify commit deadline has not passed
-    - Verify ticket index is valid
-    - Store ticket commitment with holder address
-    - Mark ticket as committed
-    - Emit TicketCommitted event
+    - ✅ Verify commit deadline has not passed
+    - ✅ Verify ticket index is valid
+    - ✅ Verify ticket secret hash matches stored hash
+    - ✅ Verify ticket hasn't already been committed
+    - ✅ Store ticket commitment with holder address
+    - ✅ Mark ticket as committed
+    - ✅ Emit TicketCommitted event
     - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.6_
 
-  - [ ] 4.2 Add commit deadline enforcement
+  - [x] 4.2 Add commit deadline enforcement and state transition
 
-    - Check block.timestamp against commitDeadline
-    - Revert with "Commit period closed" if deadline passed
-    - Transition state to CommitClosed when deadline passes
+    - ✅ Check block.timestamp against commitDeadline in commitTicket
+    - ✅ Revert with CommitDeadlinePassed if deadline passed
+    - ✅ Create closeCommitPeriod function (callable by anyone)
+    - ✅ Transition state to CommitClosed when deadline passes
+    - ✅ Comprehensive tests for commit phase including edge cases
     - _Requirements: 3.4, 3.7, 3.8_
 
   - [ ]\* 4.3 Implement sponsored commit function
@@ -594,35 +598,84 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 ## Implementation Status Summary
 
-### ✅ Completed (Tasks 1-3)
+### ✅ Completed (Tasks 1-4)
 
-- Project structure and development environment set up
-- Core data structures implemented (LotteryState enum, Lottery struct, TicketCommitment struct)
-- Storage mappings and state variables defined
-- Custom errors and events defined
-- Lottery creation function with full validation implemented
-- View functions for lottery data access added
-- Comprehensive tests written for data structures and lottery creation
+**Smart Contract - Core Functionality:**
+- ✅ Project structure and development environment set up
+- ✅ Core data structures implemented (LotteryState enum, Lottery struct, TicketCommitment struct)
+- ✅ Storage mappings and state variables defined (including rollover pool and sponsored gas fields)
+- ✅ Custom errors and events defined for all operations
+- ✅ Lottery creation function with full validation implemented
+- ✅ View functions for lottery data access added (status, prizes, creator, tickets, reveal info)
+- ✅ Helper view functions (isCommitPeriodOpen, isRevealReady, isClaimPeriodActive)
+- ✅ Commit phase fully implemented with commitTicket function
+- ✅ Commit deadline enforcement and state transition (closeCommitPeriod)
+- ✅ Comprehensive tests written (100+ test cases covering all scenarios)
 
-### 🚧 In Progress (Tasks 4-20)
+**Test Coverage:**
+- ✅ Constructor and state variable initialization
+- ✅ Lottery creation with validation (prize sum, deadlines, array lengths)
+- ✅ Fuzz testing for lottery creation
+- ✅ All view/accessor functions tested
+- ✅ Commit ticket functionality (success, errors, multiple tickets, partial commitment)
+- ✅ Close commit period state transition
 
-- Smart contract functionality (commit, reveal, claim, forfeiture)
-- Security features and access control
-- Frontend Web3 integration
-- UI components for all user flows
-- Deployment to Arc blockchain
+### 🚧 In Progress (Tasks 5-20)
 
-### 📋 Next Steps
+**Smart Contract - Remaining Functionality:**
+- Reveal phase and prize assignment (task 5)
+- Claim phase with gasless claiming (task 6)
+- Forfeiture and rollover mechanism (task 7)
+- Security features (ReentrancyGuard, SafeTransferLib) (task 8)
+- Timeout and refund mechanism (task 9)
+- Optional: Comprehensive test suite completion (task 10)
 
-1. Implement commit phase functionality (task 4)
-2. Implement reveal phase and prize assignment (task 5)
-3. Implement claim phase with gasless claiming (task 6)
-4. Implement forfeiture and rollover mechanism (task 7)
-5. Add security features and access control (task 8)
-6. Implement timeout and refund mechanism (task 9)
-7. Set up frontend Web3 integration (task 11)
-8. Build UI components (tasks 12-17)
-9. Add monitoring and deploy (tasks 18-20)
+**Frontend - Full Implementation:**
+- Web3 integration setup (task 11)
+- Lottery creation UI (task 12)
+- Ticket commit UI (task 13)
+- Reveal UI for creators (task 14)
+- Prize reveal and claim UI (task 15)
+- Countdown and deadline UI (task 16)
+- Error handling and validation (task 17)
+- Monitoring and analytics (task 18)
+
+**Deployment:**
+- Contract deployment to Arc testnet/mainnet (task 19)
+- Frontend deployment (task 20)
+
+### 📋 Next Steps (Priority Order)
+
+1. **Implement reveal phase and prize assignment (task 5)** - Core lottery functionality
+   - Verify creator secret against commitment
+   - Generate randomness from secret + block hash
+   - Implement prize-centric assignment algorithm (O(M) instead of O(N))
+   - Handle prize cascade for uncommitted tickets
+   - Transition to RevealOpen state
+
+2. **Implement claim phase with gasless claiming (task 6)** - Enable winners to claim prizes
+   - Verify ticket secret and commitment status
+   - Calculate net prize (gross - gas cost)
+   - Transfer prize and refund gas to relayer
+   - Mark ticket as redeemed
+
+3. **Implement forfeiture and rollover (task 7)** - Handle unclaimed prizes
+   - Process forfeited prizes after claim deadline
+   - Add to rollover pool for future lotteries
+   - Transition to Finalized state
+
+4. **Add security features (task 8)** - Production readiness
+   - Integrate Solady's ReentrancyGuard
+   - Use SafeTransferLib for native ETH transfers
+   - Add access control modifiers
+
+5. **Implement timeout refund (task 9)** - Safety mechanism
+   - Allow refund if creator fails to reveal within 24h
+
+6. **Begin frontend integration (task 11)** - Start UI development
+   - Install Web3 dependencies (wagmi, viem, RainbowKit)
+   - Configure Arc blockchain connection
+   - Generate contract types and ABIs
 
 ---
 
@@ -636,7 +689,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - Solady library is already installed in contract/lib/solady for gas-optimized utilities
 - Frontend already has React, TanStack Router, Tailwind, and shadcn/ui configured
 
-### ⚠️ Implementation Note: Arc Blockchain Native Currency
+### ⚠️ Implementation Notes
+
+#### Arc Blockchain Native Currency
 
 **Arc blockchain uses native ETH as its base currency.** The current contract implementation correctly uses native ETH (msg.value) for prize pools. While the requirements mention "USDC", on Arc blockchain this should be interpreted as the native currency (ETH) or an ERC20 USDC token if needed.
 
@@ -651,3 +706,27 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - Update UI to handle both 18 decimals (ETH) and 6 decimals (USDC)
 
 **For now, all references to "USDC" in tasks should be interpreted as native ETH on Arc blockchain.**
+
+#### Contract Implementation Progress
+
+The smart contract has made excellent progress with a solid foundation:
+
+**✅ Completed:**
+- All data structures and state management
+- Lottery creation with comprehensive validation
+- Full commit phase implementation
+- State transition management (CommitOpen → CommitClosed)
+- Extensive view functions for data access
+- 100+ test cases with fuzz testing
+
+**🎯 Next Critical Path:**
+1. Reveal phase (task 5) - Enables lottery completion
+2. Claim phase (task 6) - Enables prize distribution
+3. Forfeiture (task 7) - Handles unclaimed prizes
+4. Security hardening (task 8) - Production readiness
+
+**Frontend Status:**
+- Basic React + TanStack Router structure in place
+- No Web3 integration yet (wagmi/viem not installed)
+- No lottery-specific components yet
+- Ready to begin implementation after core contract features complete
