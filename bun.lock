@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "zk-giftcard",
+      "name": "blockery",
       "devDependencies": {
         "@types/bun": "latest",
         "shadcn": "^3.5.0",

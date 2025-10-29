@@ -1,4 +1,4 @@
-# zk-giftcard
+# blockery
 
 To install dependencies:
 

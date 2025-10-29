@@ -3,7 +3,7 @@
 ## Monorepo Organization
 
 ```
-zk-giftcard/
+blockery/
 ├── contract/          # Foundry smart contracts
 ├── fe/                # React frontend application
 ├── .kiro/             # Kiro AI assistant configuration
