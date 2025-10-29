@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
+
 /**
  * @title LotteryFactory
  * @notice A decentralized lottery system using commit-reveal pattern for fairness
  * @dev Implements time-locked mystery lotteries with prize cascade and gasless claiming
  */
-contract LotteryFactory {
+contract LotteryFactory is ReentrancyGuard {
     // ============ Enums ============
 
     /**
@@ -513,7 +515,10 @@ contract LotteryFactory {
      * @param _ticketIndex Index of the ticket to claim
      * @param _ticketSecret The ticket secret that matches the stored hash
      */
-    function claimPrize(uint256 _lotteryId, uint256 _ticketIndex, bytes calldata _ticketSecret) external {
+    function claimPrize(uint256 _lotteryId, uint256 _ticketIndex, bytes calldata _ticketSecret)
+        external
+        nonReentrant
+    {
         Lottery storage lottery = lotteries[_lotteryId];
         TicketCommitment storage ticket = tickets[_lotteryId][_ticketIndex];
 

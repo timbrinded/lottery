@@ -209,10 +209,11 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
     - ✅ Rollover pool storage (lotteryRolloverPool mapping) exists
     - ✅ Prizes for UNCOMMITTED tickets cascade to rollover during reveal
-    - ✅ Implemented in _assignPrizes function
+    - ✅ Implemented in \_assignPrizes function
     - _Requirements: 6.2, 6.3, 6.4_
 
   - [x] 7.2 Implement finalizeLottery function for unclaimed prizes
+
     - ✅ Created finalizeLottery function callable after claim deadline
     - ✅ Iterates through all assigned prizes and identifies unclaimed ones
     - ✅ Adds unclaimed prize amounts to lotteryRolloverPool
@@ -222,16 +223,16 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - _Requirements: 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8_
 
   - [x] 7.3 Implement rollover integration with new lotteries
-    - ✅ createLottery accepts optional _rolloverLotteryId parameter
+    - ✅ createLottery accepts optional \_rolloverLotteryId parameter
     - ✅ Pulls rollover funds from specified lottery and adds to prize pool
     - ✅ Clears rollover pool after funds are used
     - ✅ getRolloverPool() view function returns balance for specific lottery
     - ✅ getTotalRolloverPool() view function returns sum across all lotteries
     - _Requirements: 6.5, 6.7, 6.8_
 
-- [ ] 8. Add security features and access control
+- [x] 8. Add security features and access control
 
-  - [ ] 8.1 Implement ReentrancyGuard
+  - [x] 8.1 Implement ReentrancyGuard
 
     - Import Solady's ReentrancyGuard: `import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol"`
     - Make LotteryFactory inherit from ReentrancyGuard
@@ -263,7 +264,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - [ ] 9. Implement timeout and refund mechanism
 
   - [ ] 9.1 Create refundLottery function for failed reveals
-    - Create refundLottery(uint256 _lotteryId) external function
+    - Create refundLottery(uint256 \_lotteryId) external function
     - Verify lottery is in CommitClosed state (not revealed)
     - Verify 24 hours have passed since revealTime
     - Transfer totalPrizePool back to lottery.creator
@@ -275,6 +276,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - [ ]\* 10. Complete smart contract test coverage
 
   - [x]\* 10.1 Unit tests for lottery creation
+
     - ✅ Valid lottery creation with all validations
     - ✅ Invalid prize distributions (fuzz testing)
     - ✅ Invalid deadline ordering
@@ -284,6 +286,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - _Requirements: 1.1-1.8_
 
   - [x]\* 10.2 Unit tests for commit phase
+
     - ✅ Successful commits with time manipulation
     - ✅ Commits after deadline
     - ✅ Duplicate commits
@@ -292,6 +295,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - _Requirements: 3.1-3.8_
 
   - [x]\* 10.3 Unit tests for reveal and prize assignment
+
     - ✅ Reveal with correct/incorrect secret
     - ✅ Prize cascade for uncommitted tickets
     - ✅ Randomness generation verification
@@ -300,6 +304,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - _Requirements: 4.1-4.12_
 
   - [ ]\* 10.4 Unit tests for claim phase
+
     - Test successful claims with gasless mechanism
     - Test gas cost calculation and deduction
     - Test net prize transfer to winner
@@ -354,7 +359,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Create fe/src/routes/ticket.tsx (ticket redemption with query params)
     - Create fe/src/routes/dashboard.tsx (creator dashboard)
     - Create fe/src/routes/lottery.$id.tsx (lottery details page)
-    - Update __root.tsx with Header navigation component
+    - Update \_\_root.tsx with Header navigation component
     - Test routing with TanStack Router DevTools
     - _Requirements: General navigation_
 
@@ -505,7 +510,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
     - Create fe/src/hooks/useClaimPrize.ts
     - Fetch grossPrize from tickets[lotteryId][ticketIndex].prizeAmount
-    - Estimate gas cost: 50000 * gasPrice (in wei)
+    - Estimate gas cost: 50000 \* gasPrice (in wei)
     - Calculate netPrize = grossPrize - gasCost
     - Display: "Gross: X ETH, Gas: Y ETH, Net: Z ETH"
     - Use useWriteContract to call claimPrize(lotteryId, ticketIndex, ticketSecret)
@@ -587,6 +592,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 - [ ]\* 18. Add monitoring and analytics (Optional - Post-MVP)
 
   - [ ]\* 18.1 Set up error tracking
+
     - Install Sentry: `cd fe && bun add @sentry/react`
     - Configure Sentry in main.tsx with DSN
     - Track transaction failures and contract errors

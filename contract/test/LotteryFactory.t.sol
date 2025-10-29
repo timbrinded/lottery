@@ -1747,4 +1747,99 @@ contract LotteryFactoryTest is Test {
         vm.expectRevert(); // Expect arithmetic underflow/panic
         factory.claimPrize(lotteryId, losingTicket, abi.encodePacked("ticket_", vm.toString(losingTicket)));
     }
+
+    // ============ Security Tests ============
+
+    /**
+     * @notice Test that claimPrize is protected against reentrancy attacks
+     * @dev Creates a malicious contract that attempts to recursively call claimPrize
+     */
+    function test_ClaimPrize_ReentrancyProtection() public {
+        // Setup lottery
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+        ticketSecretHashes[1] = keccak256(abi.encodePacked("ticket_1"));
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 5e18;
+        prizeValues[1] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 10e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Deploy malicious contract
+        MaliciousReentrancy attacker = new MaliciousReentrancy(factory);
+
+        // Commit ticket from malicious contract
+        vm.prank(address(attacker));
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Commit second ticket from normal user
+        address user2 = address(0x2);
+        vm.prank(user2);
+        factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Set gas price for claim
+        vm.txGasPrice(10 gwei);
+
+        // Attempt reentrancy attack
+        // The reentrancy guard will block the nested call, causing the receive() to revert
+        // This causes the outer transfer to fail with "Transfer to winner failed"
+        vm.expectRevert("Transfer to winner failed");
+        attacker.attack(lotteryId, 0, abi.encodePacked("ticket_0"));
+    }
+}
+
+/**
+ * @title MaliciousReentrancy
+ * @notice Malicious contract that attempts reentrancy attack on claimPrize
+ */
+contract MaliciousReentrancy {
+    LotteryFactory public factory;
+    uint256 public lotteryId;
+    uint256 public ticketIndex;
+    bytes public ticketSecret;
+    bool public attacking;
+
+    constructor(LotteryFactory _factory) {
+        factory = _factory;
+    }
+
+    /**
+     * @notice Initiate the reentrancy attack
+     */
+    function attack(uint256 _lotteryId, uint256 _ticketIndex, bytes memory _ticketSecret) external {
+        lotteryId = _lotteryId;
+        ticketIndex = _ticketIndex;
+        ticketSecret = _ticketSecret;
+        attacking = true;
+
+        // First call to claimPrize
+        factory.claimPrize(_lotteryId, _ticketIndex, _ticketSecret);
+    }
+
+    /**
+     * @notice Fallback function that attempts reentrancy
+     */
+    receive() external payable {
+        // If we're in attack mode and have received funds, try to reenter
+        if (attacking && msg.value > 0) {
+            attacking = false; // Prevent infinite loop in case reentrancy guard fails
+            // Attempt to claim again (should be blocked by reentrancy guard)
+            factory.claimPrize(lotteryId, ticketIndex, ticketSecret);
+        }
+    }
 }
