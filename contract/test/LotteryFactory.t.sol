@@ -12,11 +12,7 @@ contract LotteryFactoryTest is Test {
     LotteryFactory public factory;
 
     // Events for testing
-    event LotteryRevealed(
-        uint256 indexed lotteryId,
-        uint256 randomSeed,
-        uint256 revealedAt
-    );
+    event LotteryRevealed(uint256 indexed lotteryId, uint256 randomSeed, uint256 revealedAt);
 
     event PrizeClaimed(
         uint256 indexed lotteryId,
@@ -34,11 +30,7 @@ contract LotteryFactoryTest is Test {
     // ============ Constructor Tests ============
 
     function test_Constructor_InitializesLotteryCounter() public view {
-        assertEq(
-            factory.lotteryCounter(),
-            1,
-            "Lottery counter should start at 1"
-        );
+        assertEq(factory.lotteryCounter(), 1, "Lottery counter should start at 1");
     }
 
     // ============ State Variable Tests ============
@@ -50,11 +42,7 @@ contract LotteryFactoryTest is Test {
 
     function test_LotteryRolloverPool_InitiallyZero() public view {
         uint256 rollover = factory.lotteryRolloverPool(1);
-        assertEq(
-            rollover,
-            0,
-            "Rollover pool should be 0 for non-existent lottery"
-        );
+        assertEq(rollover, 0, "Rollover pool should be 0 for non-existent lottery");
     }
 
     // ============ Struct and Enum Tests ============
@@ -88,21 +76,13 @@ contract LotteryFactoryTest is Test {
 
         // Verify default values
         assertEq(creator, address(0), "Default creator should be zero address");
-        assertEq(
-            creatorCommitment,
-            bytes32(0),
-            "Default commitment should be zero"
-        );
+        assertEq(creatorCommitment, bytes32(0), "Default commitment should be zero");
         assertEq(totalPrizePool, 0, "Default prize pool should be 0");
         assertEq(commitDeadline, 0, "Default commit deadline should be 0");
         assertEq(revealTime, 0, "Default reveal time should be 0");
         assertEq(claimDeadline, 0, "Default claim deadline should be 0");
         assertEq(randomSeed, 0, "Default random seed should be 0");
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.Pending),
-            "Default state should be Pending"
-        );
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Pending), "Default state should be Pending");
         assertEq(createdAt, 0, "Default created at should be 0");
         assertEq(sponsoredGasPool, 0, "Default sponsored gas pool should be 0");
         assertEq(sponsoredGasUsed, 0, "Default sponsored gas used should be 0");
@@ -110,12 +90,7 @@ contract LotteryFactoryTest is Test {
 
     function test_Tickets_Mapping_DefaultValues() public view {
         // Access non-existent ticket
-        (
-            address holder,
-            bool committed,
-            bool redeemed,
-            uint256 prizeAmount
-        ) = factory.tickets(999, 0);
+        (address holder, bool committed, bool redeemed, uint256 prizeAmount) = factory.tickets(999, 0);
 
         // Verify default values
         assertEq(holder, address(0), "Default holder should be zero address");
@@ -126,27 +101,13 @@ contract LotteryFactoryTest is Test {
 
     // ============ Fuzz Tests ============
 
-    function testFuzz_LotteryRolloverPool_ReturnsZeroForAnyId(
-        uint256 lotteryId
-    ) public view {
+    function testFuzz_LotteryRolloverPool_ReturnsZeroForAnyId(uint256 lotteryId) public view {
         uint256 rollover = factory.lotteryRolloverPool(lotteryId);
-        assertEq(
-            rollover,
-            0,
-            "Rollover pool should be 0 for any uninitialized lottery"
-        );
+        assertEq(rollover, 0, "Rollover pool should be 0 for any uninitialized lottery");
     }
 
-    function testFuzz_Tickets_DefaultValuesForAnyIndex(
-        uint256 lotteryId,
-        uint256 ticketIndex
-    ) public view {
-        (
-            address holder,
-            bool committed,
-            bool redeemed,
-            uint256 prizeAmount
-        ) = factory.tickets(lotteryId, ticketIndex);
+    function testFuzz_Tickets_DefaultValuesForAnyIndex(uint256 lotteryId, uint256 ticketIndex) public view {
+        (address holder, bool committed, bool redeemed, uint256 prizeAmount) = factory.tickets(lotteryId, ticketIndex);
 
         assertEq(holder, address(0), "Holder should be zero address");
         assertFalse(committed, "Committed should be false");
@@ -175,11 +136,7 @@ contract LotteryFactoryTest is Test {
 
         // Create lottery
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Verify lottery ID and counter
@@ -187,26 +144,10 @@ contract LotteryFactoryTest is Test {
         assertEq(factory.lotteryCounter(), 2, "Counter should increment to 2");
 
         // Verify lottery data in separate calls to avoid stack too deep
-        (
-            address creator,
-            bytes32 storedCommitment,
-            uint256 storedPrizePool,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-
-        ) = factory.lotteries(lotteryId);
+        (address creator, bytes32 storedCommitment, uint256 storedPrizePool,,,,,,,,) = factory.lotteries(lotteryId);
 
         assertEq(creator, address(this), "Creator should be test contract");
-        assertEq(
-            storedCommitment,
-            creatorCommitment,
-            "Commitment should match"
-        );
+        assertEq(storedCommitment, creatorCommitment, "Commitment should match");
         assertEq(storedPrizePool, totalPrize, "Prize pool should match");
     }
 
@@ -224,11 +165,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         (
@@ -242,30 +179,13 @@ contract LotteryFactoryTest is Test {
             LotteryFactory.LotteryState state,
             uint256 createdAt,
             ,
-
         ) = factory.lotteries(lotteryId);
 
-        assertEq(
-            storedCommitDeadline,
-            commitDeadline,
-            "Commit deadline should match"
-        );
+        assertEq(storedCommitDeadline, commitDeadline, "Commit deadline should match");
         assertEq(storedRevealTime, revealTime, "Reveal time should match");
-        assertEq(
-            storedClaimDeadline,
-            revealTime + 24 hours,
-            "Claim deadline should be reveal + 24h"
-        );
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.CommitOpen),
-            "State should be CommitOpen"
-        );
-        assertEq(
-            createdAt,
-            block.timestamp,
-            "Created at should be current timestamp"
-        );
+        assertEq(storedClaimDeadline, revealTime + 24 hours, "Claim deadline should be reveal + 24h");
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
+        assertEq(createdAt, block.timestamp, "Created at should be current timestamp");
     }
 
     function test_CreateLottery_EmitsEvent() public {
@@ -284,21 +204,10 @@ contract LotteryFactoryTest is Test {
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
-        emit LotteryCreated(
-            1,
-            address(this),
-            totalPrize,
-            2,
-            commitDeadline,
-            revealTime
-        );
+        emit LotteryCreated(1, address(this), totalPrize, 2, commitDeadline, revealTime);
 
         factory.createLottery{value: totalPrize}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
     }
 
@@ -324,11 +233,7 @@ contract LotteryFactoryTest is Test {
 
         vm.expectRevert(LotteryFactory.EmptyPrizeArray.selector);
         factory.createLottery{value: 0}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
     }
 
@@ -344,11 +249,7 @@ contract LotteryFactoryTest is Test {
 
         vm.expectRevert(LotteryFactory.EmptyTicketsArray.selector);
         factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
     }
 
@@ -368,11 +269,7 @@ contract LotteryFactoryTest is Test {
 
         vm.expectRevert(LotteryFactory.InvalidPrizeSum.selector);
         factory.createLottery{value: 90e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
     }
 
@@ -391,11 +288,7 @@ contract LotteryFactoryTest is Test {
 
         vm.expectRevert(LotteryFactory.InvalidDeadlines.selector);
         factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
     }
 
@@ -417,7 +310,8 @@ contract LotteryFactoryTest is Test {
             ticketSecretHashes,
             prizeValues,
             deadline,
-            deadline // Same as commit deadline
+            deadline, // Same as commit deadline
+            0
         );
     }
 
@@ -440,33 +334,17 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         // Create first lottery
-        uint256 id1 = factory.createLottery{value: 50e6}(
-            commitment1,
-            tickets1,
-            prizes1,
-            commitDeadline,
-            revealTime
-        );
+        uint256 id1 = factory.createLottery{value: 50e6}(commitment1, tickets1, prizes1, commitDeadline, revealTime, 0);
 
         // Create second lottery
-        uint256 id2 = factory.createLottery{value: 50e6}(
-            commitment2,
-            tickets2,
-            prizes2,
-            commitDeadline,
-            revealTime
-        );
+        uint256 id2 = factory.createLottery{value: 50e6}(commitment2, tickets2, prizes2, commitDeadline, revealTime, 0);
 
         assertEq(id1, 1, "First lottery ID should be 1");
         assertEq(id2, 2, "Second lottery ID should be 2");
         assertEq(factory.lotteryCounter(), 3, "Counter should be 3");
     }
 
-    function testFuzz_CreateLottery_ValidInputs(
-        uint8 numTickets,
-        uint256 totalPrize,
-        uint256 timeOffset
-    ) public {
+    function testFuzz_CreateLottery_ValidInputs(uint8 numTickets, uint256 totalPrize, uint256 timeOffset) public {
         // Bound inputs to reasonable ranges
         numTickets = uint8(bound(numTickets, 1, 100));
         totalPrize = bound(totalPrize, uint256(numTickets) * 1e6, 1_000_000e6); // Min 1 USDC per ticket, max 1M USDC
@@ -493,37 +371,18 @@ contract LotteryFactoryTest is Test {
 
         // Should succeed
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         assertEq(lotteryId, 1, "Lottery ID should be 1");
 
         // Verify stored data
-        (
-            address creator,
-            ,
-            uint256 storedPrizePool,
-            ,
-            ,
-            ,
-            ,
-            LotteryFactory.LotteryState state,
-            ,
-            ,
-
-        ) = factory.lotteries(lotteryId);
+        (address creator,, uint256 storedPrizePool,,,,, LotteryFactory.LotteryState state,,,) =
+            factory.lotteries(lotteryId);
 
         assertEq(creator, address(this), "Creator should match");
         assertEq(storedPrizePool, totalPrize, "Prize pool should match");
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.CommitOpen),
-            "State should be CommitOpen"
-        );
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
     }
 
     // ============ Accessor Function Tests ============
@@ -543,11 +402,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Test accessor
@@ -559,22 +414,10 @@ contract LotteryFactoryTest is Test {
             uint256 returnedCreatedAt
         ) = factory.getLotteryStatus(lotteryId);
 
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.CommitOpen),
-            "State should be CommitOpen"
-        );
-        assertEq(
-            returnedCommitDeadline,
-            commitDeadline,
-            "Commit deadline should match"
-        );
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
+        assertEq(returnedCommitDeadline, commitDeadline, "Commit deadline should match");
         assertEq(returnedRevealTime, revealTime, "Reveal time should match");
-        assertEq(
-            returnedClaimDeadline,
-            revealTime + 24 hours,
-            "Claim deadline should be reveal + 24h"
-        );
+        assertEq(returnedClaimDeadline, revealTime + 24 hours, "Claim deadline should be reveal + 24h");
         assertEq(returnedCreatedAt, block.timestamp, "Created at should match");
     }
 
@@ -593,16 +436,11 @@ contract LotteryFactoryTest is Test {
         uint256 totalPrize = 175e6;
 
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Test accessor
-        (uint256 returnedTotal, uint256[] memory returnedPrizes) = factory
-            .getLotteryPrizes(lotteryId);
+        (uint256 returnedTotal, uint256[] memory returnedPrizes) = factory.getLotteryPrizes(lotteryId);
 
         assertEq(returnedTotal, totalPrize, "Total prize should match");
         assertEq(returnedPrizes.length, 3, "Should have 3 prizes");
@@ -620,23 +458,14 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Test accessor
-        (address returnedCreator, bytes32 returnedCommitment) = factory
-            .getLotteryCreator(lotteryId);
+        (address returnedCreator, bytes32 returnedCommitment) = factory.getLotteryCreator(lotteryId);
 
         assertEq(returnedCreator, address(this), "Creator should match");
-        assertEq(
-            returnedCommitment,
-            creatorCommitment,
-            "Commitment should match"
-        );
+        assertEq(returnedCommitment, creatorCommitment, "Commitment should match");
     }
 
     function test_GetLotteryTickets() public {
@@ -652,32 +481,16 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Test accessor
         bytes32[] memory returnedTickets = factory.getLotteryTickets(lotteryId);
 
         assertEq(returnedTickets.length, 3, "Should have 3 tickets");
-        assertEq(
-            returnedTickets[0],
-            ticketSecretHashes[0],
-            "Ticket 0 should match"
-        );
-        assertEq(
-            returnedTickets[1],
-            ticketSecretHashes[1],
-            "Ticket 1 should match"
-        );
-        assertEq(
-            returnedTickets[2],
-            ticketSecretHashes[2],
-            "Ticket 2 should match"
-        );
+        assertEq(returnedTickets[0], ticketSecretHashes[0], "Ticket 0 should match");
+        assertEq(returnedTickets[1], ticketSecretHashes[1], "Ticket 1 should match");
+        assertEq(returnedTickets[2], ticketSecretHashes[2], "Ticket 2 should match");
     }
 
     function test_GetLotteryReveal() public {
@@ -689,23 +502,14 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Test accessor (before reveal)
-        (uint256 randomSeed, LotteryFactory.LotteryState state) = factory
-            .getLotteryReveal(lotteryId);
+        (uint256 randomSeed, LotteryFactory.LotteryState state) = factory.getLotteryReveal(lotteryId);
 
         assertEq(randomSeed, 0, "Random seed should be 0 before reveal");
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.CommitOpen),
-            "State should be CommitOpen"
-        );
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
     }
 
     function test_IsCommitPeriodOpen() public {
@@ -719,25 +523,15 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Should be open initially
-        assertTrue(
-            factory.isCommitPeriodOpen(lotteryId),
-            "Commit period should be open"
-        );
+        assertTrue(factory.isCommitPeriodOpen(lotteryId), "Commit period should be open");
 
         // Warp past deadline
         vm.warp(commitDeadline + 1);
-        assertFalse(
-            factory.isCommitPeriodOpen(lotteryId),
-            "Commit period should be closed after deadline"
-        );
+        assertFalse(factory.isCommitPeriodOpen(lotteryId), "Commit period should be closed after deadline");
     }
 
     function test_IsRevealReady() public {
@@ -749,18 +543,11 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Should not be ready initially (still in CommitOpen state)
-        assertFalse(
-            factory.isRevealReady(lotteryId),
-            "Should not be ready in CommitOpen state"
-        );
+        assertFalse(factory.isRevealReady(lotteryId), "Should not be ready in CommitOpen state");
     }
 
     function test_IsClaimPeriodActive() public {
@@ -772,27 +559,16 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Should not be active initially (not revealed yet)
-        assertFalse(
-            factory.isClaimPeriodActive(lotteryId),
-            "Should not be active before reveal"
-        );
+        assertFalse(factory.isClaimPeriodActive(lotteryId), "Should not be active before reveal");
     }
 
     // ============ CommitTicket Tests ============
 
-    event TicketCommitted(
-        uint256 indexed lotteryId,
-        uint256 indexed ticketIndex,
-        address holder
-    );
+    event TicketCommitted(uint256 indexed lotteryId, uint256 indexed ticketIndex, address holder);
 
     function test_CommitTicket_Success() public {
         // Create lottery
@@ -811,11 +587,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Commit ticket as different user
@@ -824,12 +596,7 @@ contract LotteryFactoryTest is Test {
         factory.commitTicket(lotteryId, 0, ticketSecretHash);
 
         // Verify ticket commitment
-        (
-            address holder,
-            bool committed,
-            bool redeemed,
-            uint256 prizeAmount
-        ) = factory.tickets(lotteryId, 0);
+        (address holder, bool committed, bool redeemed, uint256 prizeAmount) = factory.tickets(lotteryId, 0);
 
         assertEq(holder, user, "Holder should be user");
         assertTrue(committed, "Ticket should be committed");
@@ -848,11 +615,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         address user = address(0x456);
@@ -878,11 +641,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Warp past deadline
@@ -906,11 +665,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 40e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Try to commit with invalid index (out of bounds)
@@ -930,11 +685,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         // Try to commit with wrong secret hash
@@ -953,11 +704,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         address user = address(0x789);
@@ -986,11 +733,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         address user1 = address(0x111);
@@ -1008,9 +751,9 @@ contract LotteryFactoryTest is Test {
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
         // Verify all commitments
-        (address holder0, bool committed0, , ) = factory.tickets(lotteryId, 0);
-        (address holder1, bool committed1, , ) = factory.tickets(lotteryId, 1);
-        (address holder2, bool committed2, , ) = factory.tickets(lotteryId, 2);
+        (address holder0, bool committed0,,) = factory.tickets(lotteryId, 0);
+        (address holder1, bool committed1,,) = factory.tickets(lotteryId, 1);
+        (address holder2, bool committed2,,) = factory.tickets(lotteryId, 2);
 
         assertEq(holder0, user1, "Ticket 0 holder should be user1");
         assertEq(holder1, user2, "Ticket 1 holder should be user2");
@@ -1034,11 +777,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            block.timestamp + 1 hours,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
         );
 
         address user1 = address(0x111);
@@ -1048,9 +787,9 @@ contract LotteryFactoryTest is Test {
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
         // Verify only ticket 0 is committed
-        (address holder0, bool committed0, , ) = factory.tickets(lotteryId, 0);
-        (address holder1, bool committed1, , ) = factory.tickets(lotteryId, 1);
-        (address holder2, bool committed2, , ) = factory.tickets(lotteryId, 2);
+        (address holder0, bool committed0,,) = factory.tickets(lotteryId, 0);
+        (address holder1, bool committed1,,) = factory.tickets(lotteryId, 1);
+        (address holder2, bool committed2,,) = factory.tickets(lotteryId, 2);
 
         assertEq(holder0, user1, "Ticket 0 holder should be user1");
         assertEq(holder1, address(0), "Ticket 1 holder should be zero");
@@ -1073,21 +812,12 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Verify initial state
-        (, , , , , , , LotteryFactory.LotteryState stateBefore, , , ) = factory
-            .lotteries(lotteryId);
-        assertEq(
-            uint8(stateBefore),
-            uint8(LotteryFactory.LotteryState.CommitOpen),
-            "Should be CommitOpen"
-        );
+        (,,,,,,, LotteryFactory.LotteryState stateBefore,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(stateBefore), uint8(LotteryFactory.LotteryState.CommitOpen), "Should be CommitOpen");
 
         // Warp past deadline
         vm.warp(commitDeadline + 1);
@@ -1096,13 +826,8 @@ contract LotteryFactoryTest is Test {
         factory.closeCommitPeriod(lotteryId);
 
         // Verify state changed
-        (, , , , , , , LotteryFactory.LotteryState stateAfter, , , ) = factory
-            .lotteries(lotteryId);
-        assertEq(
-            uint8(stateAfter),
-            uint8(LotteryFactory.LotteryState.CommitClosed),
-            "Should be CommitClosed"
-        );
+        (,,,,,,, LotteryFactory.LotteryState stateAfter,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(stateAfter), uint8(LotteryFactory.LotteryState.CommitClosed), "Should be CommitClosed");
     }
 
     function test_CloseCommitPeriod_RevertsBeforeDeadline() public {
@@ -1116,11 +841,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Try to close before deadline
@@ -1139,11 +860,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Warp past deadline and close
@@ -1166,11 +883,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            block.timestamp + 2 hours
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
         );
 
         // Warp past deadline
@@ -1182,13 +895,8 @@ contract LotteryFactoryTest is Test {
         factory.closeCommitPeriod(lotteryId);
 
         // Verify state changed
-        (, , , , , , , LotteryFactory.LotteryState state, , , ) = factory
-            .lotteries(lotteryId);
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.CommitClosed),
-            "Should be CommitClosed"
-        );
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitClosed), "Should be CommitClosed");
     }
 
     // ============ Reveal Phase Tests ============
@@ -1212,11 +920,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit all tickets
@@ -1240,22 +944,17 @@ contract LotteryFactoryTest is Test {
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify state changed to RevealOpen
-        (, , , , , , , LotteryFactory.LotteryState state, , , ) = factory
-            .lotteries(lotteryId);
-        assertEq(
-            uint8(state),
-            uint8(LotteryFactory.LotteryState.RevealOpen),
-            "Should be RevealOpen"
-        );
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "Should be RevealOpen");
 
         // Verify random seed was generated
-        (uint256 randomSeed, ) = factory.getLotteryReveal(lotteryId);
+        (uint256 randomSeed,) = factory.getLotteryReveal(lotteryId);
         assertTrue(randomSeed != 0, "Random seed should be non-zero");
 
         // Verify prizes were assigned
-        (, , bool redeemed0, uint256 prize0) = factory.tickets(lotteryId, 0);
-        (, , bool redeemed1, uint256 prize1) = factory.tickets(lotteryId, 1);
-        (, , bool redeemed2, uint256 prize2) = factory.tickets(lotteryId, 2);
+        (,, bool redeemed0, uint256 prize0) = factory.tickets(lotteryId, 0);
+        (,, bool redeemed1, uint256 prize1) = factory.tickets(lotteryId, 1);
+        (,, bool redeemed2, uint256 prize2) = factory.tickets(lotteryId, 2);
 
         assertFalse(redeemed0, "Ticket 0 should not be redeemed yet");
         assertFalse(redeemed1, "Ticket 1 should not be redeemed yet");
@@ -1280,11 +979,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -1317,11 +1012,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Close and warp to reveal
@@ -1348,11 +1039,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Close commit period but don't warp to reveal time
@@ -1378,11 +1065,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Warp to reveal time but don't close commit period
@@ -1407,11 +1090,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Close and warp to reveal
@@ -1444,11 +1123,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Only commit 2 out of 3 tickets
@@ -1465,18 +1140,15 @@ contract LotteryFactoryTest is Test {
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify only committed tickets got prizes
-        (, , , uint256 prize0) = factory.tickets(lotteryId, 0);
-        (, , , uint256 prize1) = factory.tickets(lotteryId, 1);
-        (, , , uint256 prize2) = factory.tickets(lotteryId, 2);
+        (,,, uint256 prize0) = factory.tickets(lotteryId, 0);
+        (,,, uint256 prize1) = factory.tickets(lotteryId, 1);
+        (,,, uint256 prize2) = factory.tickets(lotteryId, 2);
 
         // Uncommitted ticket should have 0 prize
         assertEq(prize1, 0, "Uncommitted ticket 1 should have 0 prize");
 
         // Committed tickets should have prizes
-        assertTrue(
-            prize0 > 0 || prize2 > 0,
-            "At least one committed ticket should have prize"
-        );
+        assertTrue(prize0 > 0 || prize2 > 0, "At least one committed ticket should have prize");
 
         // With 3 prizes and 2 committed tickets, each ticket can only win once
         // So one prize (5M) should go to rollover
@@ -1484,15 +1156,8 @@ contract LotteryFactoryTest is Test {
         uint256 rollover = factory.lotteryRolloverPool(lotteryId);
 
         // Each committed ticket should win exactly one prize
-        assertTrue(
-            prize0 > 0 && prize2 > 0,
-            "Both committed tickets should win"
-        );
-        assertEq(
-            totalAssigned + rollover,
-            50e6,
-            "Total assigned + rollover should equal prize pool"
-        );
+        assertTrue(prize0 > 0 && prize2 > 0, "Both committed tickets should win");
+        assertEq(totalAssigned + rollover, 50e6, "Total assigned + rollover should equal prize pool");
         assertEq(rollover, 5e6, "One prize should go to rollover");
     }
 
@@ -1514,11 +1179,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Don't commit any tickets
@@ -1534,7 +1195,7 @@ contract LotteryFactoryTest is Test {
 
         // Verify no tickets have prizes
         for (uint256 i = 0; i < 3; i++) {
-            (, , , uint256 prize) = factory.tickets(lotteryId, i);
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
             assertEq(prize, 0, "No ticket should have prize");
         }
     }
@@ -1553,11 +1214,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -1571,17 +1228,11 @@ contract LotteryFactoryTest is Test {
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify random seed was generated
-        (uint256 randomSeed, ) = factory.getLotteryReveal(lotteryId);
+        (uint256 randomSeed,) = factory.getLotteryReveal(lotteryId);
 
         // Random seed should be keccak256(creatorSecret, block.prevrandao)
-        uint256 expectedSeed = uint256(
-            keccak256(abi.encodePacked(creatorSecret, block.prevrandao))
-        );
-        assertEq(
-            randomSeed,
-            expectedSeed,
-            "Random seed should match expected value"
-        );
+        uint256 expectedSeed = uint256(keccak256(abi.encodePacked(creatorSecret, block.prevrandao)));
+        assertEq(randomSeed, expectedSeed, "Random seed should match expected value");
     }
 
     // ============ Primary Use Case Test: Few Prizes, Many Tickets ============
@@ -1606,16 +1257,11 @@ contract LotteryFactoryTest is Test {
 
         // Should succeed with 3 prizes and 100 tickets
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Verify lottery was created correctly
-        (uint256 totalPrizePool, uint256[] memory prizes) = factory
-            .getLotteryPrizes(lotteryId);
+        (uint256 totalPrizePool, uint256[] memory prizes) = factory.getLotteryPrizes(lotteryId);
         assertEq(totalPrizePool, 100e6, "Total prize pool should be 100 USDC");
         assertEq(prizes.length, 3, "Should have 3 prizes");
         assertEq(prizes[0], 80e6, "First prize should be 80 USDC");
@@ -1627,9 +1273,7 @@ contract LotteryFactoryTest is Test {
         assertEq(storedTickets.length, 100, "Should have 100 tickets");
     }
 
-    function test_RevealLottery_ThreePrizesHundredTickets_FullCommitment()
-        public
-    {
+    function test_RevealLottery_ThreePrizesHundredTickets_FullCommitment() public {
         bytes memory creatorSecret = "creator_secret_123";
         bytes32 creatorCommitment = keccak256(creatorSecret);
 
@@ -1649,11 +1293,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit all 100 tickets
@@ -1673,7 +1313,7 @@ contract LotteryFactoryTest is Test {
         uint256 totalPrizesAssigned = 0;
 
         for (uint256 i = 0; i < 100; i++) {
-            (, , , uint256 prize) = factory.tickets(lotteryId, i);
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
             if (prize > 0) {
                 winnersCount++;
                 totalPrizesAssigned += prize;
@@ -1688,9 +1328,7 @@ contract LotteryFactoryTest is Test {
         assertEq(rollover, 0, "No prizes should go to rollover");
     }
 
-    function test_RevealLottery_ThreePrizesHundredTickets_PartialCommitment()
-        public
-    {
+    function test_RevealLottery_ThreePrizesHundredTickets_PartialCommitment() public {
         bytes memory creatorSecret = "secret";
         bytes32 creatorCommitment = keccak256(creatorSecret);
 
@@ -1710,11 +1348,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Only commit 10 out of 100 tickets
@@ -1734,7 +1368,7 @@ contract LotteryFactoryTest is Test {
         uint256 totalPrizesAssigned = 0;
 
         for (uint256 i = 0; i < 10; i++) {
-            (, , , uint256 prize) = factory.tickets(lotteryId, i);
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
             if (prize > 0) {
                 winnersCount++;
                 totalPrizesAssigned += prize;
@@ -1743,24 +1377,16 @@ contract LotteryFactoryTest is Test {
 
         // Verify uncommitted tickets have no prizes
         for (uint256 i = 10; i < 100; i++) {
-            (, , , uint256 prize) = factory.tickets(lotteryId, i);
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
             assertEq(prize, 0, "Uncommitted tickets should have no prize");
         }
 
         assertEq(winnersCount, 3, "Exactly 3 tickets should win");
-        assertEq(
-            totalPrizesAssigned,
-            100e6,
-            "All prizes should be assigned to committed tickets"
-        );
+        assertEq(totalPrizesAssigned, 100e6, "All prizes should be assigned to committed tickets");
 
         // Verify no rollover (all prizes went to committed tickets)
         uint256 rollover = factory.lotteryRolloverPool(lotteryId);
-        assertEq(
-            rollover,
-            0,
-            "No prizes should go to rollover with enough committed tickets"
-        );
+        assertEq(rollover, 0, "No prizes should go to rollover with enough committed tickets");
     }
 
     // ============ Claim Prize Tests ============
@@ -1784,11 +1410,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 17e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit all tickets
@@ -1814,7 +1436,7 @@ contract LotteryFactoryTest is Test {
         uint256 winningTicket = 999;
         uint256 winningPrize = 0;
         for (uint256 i = 0; i < 3; i++) {
-            (, , , uint256 prize) = factory.tickets(lotteryId, i);
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
             if (prize > 0) {
                 winningTicket = i;
                 winningPrize = prize;
@@ -1827,18 +1449,14 @@ contract LotteryFactoryTest is Test {
         uint256 balanceBefore = winner.balance;
 
         vm.prank(winner);
-        factory.claimPrize(
-            lotteryId,
-            winningTicket,
-            abi.encodePacked("ticket_", vm.toString(winningTicket))
-        );
+        factory.claimPrize(lotteryId, winningTicket, abi.encodePacked("ticket_", vm.toString(winningTicket)));
 
         // Verify prize was transferred (minus gas)
         uint256 balanceAfter = winner.balance;
         assertGt(balanceAfter, balanceBefore, "Winner should receive prize");
 
         // Verify ticket is marked as redeemed
-        (, , bool redeemed, ) = factory.tickets(lotteryId, winningTicket);
+        (,, bool redeemed,) = factory.tickets(lotteryId, winningTicket);
         assertTrue(redeemed, "Ticket should be marked as redeemed");
     }
 
@@ -1857,11 +1475,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -1899,11 +1513,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Only commit ticket 0, not ticket 1
@@ -1937,11 +1547,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -1976,11 +1582,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -2019,11 +1621,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -2052,11 +1650,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 1e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit ticket
@@ -2084,20 +1678,12 @@ contract LotteryFactoryTest is Test {
         // Verify user received net prize (gross - gas)
         uint256 balanceAfter = user.balance;
         assertGt(balanceAfter, 0, "User should receive net prize");
-        assertLt(
-            balanceAfter,
-            1e18,
-            "Net prize should be less than gross prize"
-        );
+        assertLt(balanceAfter, 1e18, "Net prize should be less than gross prize");
 
         // Verify gas was deducted (approximately 50,000 gas * 10 gwei = 0.0005 ETH)
         uint256 expectedGasCost = 50000 * 10 gwei;
         uint256 expectedNetPrize = 1e18 - expectedGasCost;
-        assertEq(
-            balanceAfter,
-            expectedNetPrize,
-            "Net prize should equal gross minus gas cost"
-        );
+        assertEq(balanceAfter, expectedNetPrize, "Net prize should equal gross minus gas cost");
     }
 
     function test_ClaimPrize_RevertsOnLosingTicket() public {
@@ -2118,11 +1704,7 @@ contract LotteryFactoryTest is Test {
         uint256 revealTime = block.timestamp + 2 hours;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
-            creatorCommitment,
-            ticketSecretHashes,
-            prizeValues,
-            commitDeadline,
-            revealTime
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
         // Commit all 3 tickets
@@ -2147,7 +1729,7 @@ contract LotteryFactoryTest is Test {
         // Find a losing ticket (one with 0 prize)
         uint256 losingTicket = 999;
         for (uint256 i = 0; i < 3; i++) {
-            (, , , uint256 prize) = factory.tickets(lotteryId, i);
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
             if (prize == 0) {
                 losingTicket = i;
                 break;
@@ -2155,11 +1737,7 @@ contract LotteryFactoryTest is Test {
         }
 
         // Verify we found a losing ticket
-        assertLt(
-            losingTicket,
-            3,
-            "Should have found at least one losing ticket"
-        );
+        assertLt(losingTicket, 3, "Should have found at least one losing ticket");
 
         // Try to claim the losing ticket - should revert with arithmetic underflow
         // because netPrize = 0 - gasCost will underflow
@@ -2167,10 +1745,6 @@ contract LotteryFactoryTest is Test {
         vm.txGasPrice(10 gwei); // Set gas price so gasCost > 0
         vm.prank(loser);
         vm.expectRevert(); // Expect arithmetic underflow/panic
-        factory.claimPrize(
-            lotteryId,
-            losingTicket,
-            abi.encodePacked("ticket_", vm.toString(losingTicket))
-        );
+        factory.claimPrize(lotteryId, losingTicket, abi.encodePacked("ticket_", vm.toString(losingTicket)));
     }
 }

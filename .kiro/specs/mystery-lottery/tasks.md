@@ -203,49 +203,52 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Emit PrizeClaimed event with gross, net, and gas amounts
     - _Requirements: 5.10, 5.12_
 
-- [ ] 7. Implement forfeiture and rollover mechanism
+- [x] 7. Implement forfeiture and rollover mechanism
 
-  - [x] 7.1 Partial implementation: Uncommitted ticket prize cascade
+  - [x] 7.1 Uncommitted ticket prize cascade
 
     - ✅ Rollover pool storage (lotteryRolloverPool mapping) exists
     - ✅ Prizes for UNCOMMITTED tickets cascade to rollover during reveal
     - ✅ Implemented in _assignPrizes function
-    - Note: This only handles uncommitted tickets, not unclaimed prizes after deadline
     - _Requirements: 6.2, 6.3, 6.4_
 
-  - [ ] 7.2 Implement finalizeLottery function for unclaimed prizes
-    - Create finalizeLottery function callable after claim deadline
-    - Iterate through all assigned prizes and identify unclaimed ones
-    - Add unclaimed prize amounts to lotteryRolloverPool
-    - Verify claim deadline has passed
-    - Transition lottery state to Finalized
-    - Emit PrizesForfeited event with total forfeited amount
+  - [x] 7.2 Implement finalizeLottery function for unclaimed prizes
+    - ✅ Created finalizeLottery function callable after claim deadline
+    - ✅ Iterates through all assigned prizes and identifies unclaimed ones
+    - ✅ Adds unclaimed prize amounts to lotteryRolloverPool
+    - ✅ Verifies claim deadline has passed
+    - ✅ Transitions lottery state to Finalized
+    - ✅ Emits PrizesForfeited event with total forfeited amount
     - _Requirements: 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8_
 
-  - [ ] 7.3 Implement rollover integration with new lotteries
-    - Add mechanism for new lottery creators to pull from rollover pool
-    - Update createLottery to optionally include rollover funds
-    - Add view function to check available rollover pool balance
-    - Document how rollover funds are distributed to future lotteries
+  - [x] 7.3 Implement rollover integration with new lotteries
+    - ✅ createLottery accepts optional _rolloverLotteryId parameter
+    - ✅ Pulls rollover funds from specified lottery and adds to prize pool
+    - ✅ Clears rollover pool after funds are used
+    - ✅ getRolloverPool() view function returns balance for specific lottery
+    - ✅ getTotalRolloverPool() view function returns sum across all lotteries
     - _Requirements: 6.5, 6.7, 6.8_
 
 - [ ] 8. Add security features and access control
 
   - [ ] 8.1 Implement ReentrancyGuard
 
-    - Use Solady's ReentrancyGuard for gas efficiency (import from solady/utils/ReentrancyGuard.sol)
-    - Apply nonReentrant modifier to claimPrize
+    - Import Solady's ReentrancyGuard: `import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol"`
+    - Make LotteryFactory inherit from ReentrancyGuard
+    - Apply nonReentrant modifier to claimPrize function
+    - Write test to verify reentrancy protection (attempt recursive call)
     - Note: Solady is already installed in contract/lib/solady
-    - Note: createLottery doesn't need reentrancy protection (no external calls during state changes)
+    - Note: createLottery doesn't need protection (no external calls during state changes)
     - _Requirements: 9.1_
 
-  - [x] 8.2 Native ETH transfer safety (UPDATED)
+  - [x] 8.2 Native ETH transfer safety
 
     - ✅ Contract uses native ETH transfers via payable addresses
     - ✅ Follows checks-effects-interactions pattern in claimPrize
-    - ✅ State updated before external calls
+    - ✅ State updated before external calls (ticket.redeemed = true)
     - ✅ Uses require() to verify transfer success
-    - Note: Arc blockchain uses native ETH, not ERC20 USDC tokens
+    - ✅ Transfers net prize to winner, then refunds gas to tx.origin
+    - Note: Arc blockchain uses native ETH for prizes and gas
     - _Requirements: 9.2, 11.1_
 
   - [x] 8.3 Implement access control modifiers
@@ -259,569 +262,397 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 - [ ] 9. Implement timeout and refund mechanism
 
-  - [ ] 9.1 Create refund function for failed reveals
-    - Check 24 hours have passed since reveal time
-    - Verify lottery has not been revealed
-    - Refund all prizes to creator
-    - Transition to Finalized state
+  - [ ] 9.1 Create refundLottery function for failed reveals
+    - Create refundLottery(uint256 _lotteryId) external function
+    - Verify lottery is in CommitClosed state (not revealed)
+    - Verify 24 hours have passed since revealTime
+    - Transfer totalPrizePool back to lottery.creator
+    - Transition lottery state to Finalized
+    - Emit LotteryRefunded event with lotteryId and amount
+    - Write tests for successful refund and edge cases
     - _Requirements: 4.11, 9.7_
 
-- [x]\* 10. Write comprehensive smart contract tests with Foundry
+- [ ]\* 10. Complete smart contract test coverage
 
-  - [x]\* 10.1 Unit tests for lottery creation (test/LotteryFactory.t.sol)
-
-    - ✅ Write test for valid lottery creation using forge test
-    - ✅ Test invalid prize distributions (fuzz testing)
-    - ✅ Test invalid deadline ordering
-    - ✅ Test native ETH deposit handling
-    - ✅ Use Foundry's vm.prank for different users
+  - [x]\* 10.1 Unit tests for lottery creation
+    - ✅ Valid lottery creation with all validations
+    - ✅ Invalid prize distributions (fuzz testing)
+    - ✅ Invalid deadline ordering
+    - ✅ Native ETH deposit handling
+    - ✅ Multiple sequential lotteries
     - ✅ 100+ test cases covering all scenarios
     - _Requirements: 1.1-1.8_
 
   - [x]\* 10.2 Unit tests for commit phase
-
-    - ✅ Test successful commits with vm.warp for time manipulation
-    - ✅ Test commits after deadline
-    - ✅ Test duplicate commits
-    - ✅ Test multiple tickets and partial commitments
-    - ✅ Use Foundry's expectRevert for error testing
+    - ✅ Successful commits with time manipulation
+    - ✅ Commits after deadline
+    - ✅ Duplicate commits
+    - ✅ Multiple tickets and partial commitments
+    - ✅ Close commit period state transition
     - _Requirements: 3.1-3.8_
 
   - [x]\* 10.3 Unit tests for reveal and prize assignment
-
-    - ✅ Test reveal with correct secret
-    - ✅ Test reveal with incorrect secret using expectRevert
-    - ✅ Test prize cascade for uncommitted tickets
-    - ✅ Test randomness generation with different block hashes
-    - ✅ Test primary use case: 3 prizes, 100 tickets
+    - ✅ Reveal with correct/incorrect secret
+    - ✅ Prize cascade for uncommitted tickets
+    - ✅ Randomness generation verification
+    - ✅ Primary use case: 3 prizes, 100 tickets
+    - ✅ Full/partial/no commitment scenarios
     - _Requirements: 4.1-4.12_
 
-  - [ ]\* 10.4 Unit tests for claiming
-
-    - Test successful claims
-    - Test gasless claiming mechanism
-    - Test claims without commit
+  - [ ]\* 10.4 Unit tests for claim phase
+    - Test successful claims with gasless mechanism
+    - Test gas cost calculation and deduction
+    - Test net prize transfer to winner
+    - Test gas refund to tx.origin
+    - Test claims without commit (should revert)
     - Test double redemption prevention
-    - Use vm.expectEmit for event testing
+    - Test claims with invalid secret
+    - Use vm.expectEmit for PrizeClaimed event
     - _Requirements: 5.1-5.12_
 
   - [ ]\* 10.5 Integration tests for full lifecycle
-    - Test complete lottery flow with multiple users
+    - Test complete lottery flow: create → commit → reveal → claim → finalize
     - Test multiple participants using vm.startPrank/vm.stopPrank
-    - Test partial commitment scenarios
-    - Test forfeiture and rollover
+    - Test partial commitment with forfeiture
+    - Test rollover integration (create lottery with rollover funds)
+    - Test timeout refund scenario (once implemented)
     - Use Foundry's invariant testing for edge cases
     - _Requirements: All_
 
-- [ ] 11. Set up frontend integration with existing React app
+- [ ] 11. Set up frontend Web3 integration
 
   - [ ] 11.1 Install Web3 dependencies
 
-    - Install wagmi for Arc blockchain interaction (bun add wagmi)
-    - Install viem for Ethereum utilities (bun add viem)
-    - Install @tanstack/react-query for data fetching (bun add @tanstack/react-query)
-    - Install wallet connection library - RainbowKit (bun add @rainbow-me/rainbowkit) or ConnectKit
-    - Install additional UI libraries: qrcode.react, canvas-confetti
+    - Run: `cd fe && bun add wagmi viem @tanstack/react-query`
+    - Run: `bun add @rainbow-me/rainbowkit` (wallet connection UI)
+    - Run: `bun add qrcode.react canvas-confetti` (QR codes and animations)
+    - Verify installations in fe/package.json
     - _Requirements: 11.2_
 
   - [ ] 11.2 Configure Arc blockchain connection
 
-    - Create wagmi config in fe/src/lib/wagmi.ts
-    - Add Arc network configuration (chain ID, RPC URLs, block explorer)
-    - Set up RPC endpoints for Arc testnet and mainnet
-    - Configure wallet connection provider in main.tsx
-    - Add network switching logic
+    - Create fe/src/lib/wagmi.ts with Arc chain configuration
+    - Define Arc testnet chain: { id, name, rpcUrls, blockExplorers, nativeCurrency }
+    - Create wagmi config with Arc chain and connectors
+    - Wrap app in WagmiProvider and QueryClientProvider in main.tsx
+    - Add RainbowKitProvider for wallet connection UI
+    - Test wallet connection with MetaMask/WalletConnect
     - _Requirements: 11.3, 11.4_
 
   - [ ] 11.3 Generate contract types and ABIs
 
-    - Build contracts with forge build to generate ABI
-    - Copy ABI from contract/out/LotteryFactory.sol/LotteryFactory.json to fe/src/contracts/
-    - Generate TypeScript types with wagmi CLI (wagmi generate) or manually
-    - Create contract configuration file (fe/src/contracts/config.ts) with addresses and ABI
+    - Run: `cd contract && forge build` to compile contracts
+    - Copy contract/out/LotteryFactory.sol/LotteryFactory.json to fe/src/contracts/
+    - Create fe/src/contracts/LotteryFactory.ts with ABI export
+    - Create fe/src/contracts/config.ts with contract address constants
+    - Generate TypeScript types from ABI (manually or with wagmi CLI)
+    - Export typed contract hooks for use in components
     - _Requirements: 11.2_
 
   - [ ] 11.4 Set up TanStack Router routes
-    - Create route for lottery creation (fe/src/routes/create.tsx)
-    - Create route for ticket redemption (fe/src/routes/ticket.tsx)
-    - Create route for lottery dashboard (fe/src/routes/dashboard.tsx)
-    - Create route for lottery details (fe/src/routes/lottery.$id.tsx)
-    - Update \_\_root.tsx with navigation if needed
+    - Create fe/src/routes/create.tsx (lottery creation page)
+    - Create fe/src/routes/ticket.tsx (ticket redemption with query params)
+    - Create fe/src/routes/dashboard.tsx (creator dashboard)
+    - Create fe/src/routes/lottery.$id.tsx (lottery details page)
+    - Update __root.tsx with Header navigation component
+    - Test routing with TanStack Router DevTools
     - _Requirements: General navigation_
 
 - [ ] 12. Implement lottery creation UI
 
   - [ ] 12.1 Install shadcn/ui components
 
-    - Install required shadcn components: Button, Input, Label, Card, Alert, Checkbox
-    - Use: bunx shadcn@latest add button input label card alert checkbox
-    - Components will be added to fe/src/components/ui/
+    - Run: `cd fe && bunx shadcn@latest add button input label card alert`
+    - Run: `bunx shadcn@latest add form select textarea badge`
+    - Verify components added to fe/src/components/ui/
     - _Requirements: 1.1, 2.1_
 
   - [ ] 12.2 Create crypto utilities in fe/src/lib/crypto.ts
 
-    - Generate cryptographically secure random secrets using Web Crypto API
-    - Implement keccak256 hashing using viem's keccak256 function
-    - Create functions: generateSecret(), hashSecret(), generateTicketSecrets()
+    - Import keccak256 from viem: `import { keccak256, toBytes, toHex } from 'viem'`
+    - Create generateSecret(): string - uses crypto.randomBytes(32)
+    - Create hashSecret(secret: string): `0x${string}` - uses keccak256
+    - Create generateTicketSecrets(count: number): string[] - array of secrets
+    - Export all functions for use in components
     - _Requirements: 1.2, 1.3, 1.4, 1.5_
 
-  - [ ] 12.3 Create CreateLotteryForm component in fe/src/components/lottery/
+  - [ ] 12.3 Create CreateLotteryForm component
 
-    - Build form with prize distribution inputs (dynamic array)
-    - Add number of tickets input
-    - Add commit deadline and reveal time inputs (datetime-local or date picker)
-    - Add optional sponsored gas checkbox
-    - Implement form validation (prize sum, deadline ordering)
-    - Use TailwindCSS for styling
+    - Create fe/src/components/lottery/CreateLotteryForm.tsx
+    - Use shadcn Form with react-hook-form for validation
+    - Add dynamic prize inputs (add/remove prize fields)
+    - Add number of tickets input (1-1000)
+    - Add commit deadline (hours before reveal) and reveal time inputs
+    - Validate: prize sum > 0, deadlines in order, tickets > prizes
+    - Display total ETH required for prize pool
     - _Requirements: 1.1, 2.1_
 
-  - [ ] 12.4 Create useCreateLottery hook in fe/src/hooks/
+  - [ ] 12.4 Create useCreateLottery hook
 
-    - Use wagmi's useWriteContract for contract interaction
-    - Handle USDC approval if needed (useWriteContract for approve)
-    - Call createLottery contract function with generated secrets
-    - Wait for transaction confirmation using useWaitForTransactionReceipt
-    - Return lottery ID and ticket codes
+    - Create fe/src/hooks/useCreateLottery.ts
+    - Generate creator secret and commitment hash
+    - Generate ticket secrets and hashes
+    - Use wagmi's useWriteContract to call createLottery
+    - Pass: creatorCommitment, ticketSecretHashes, prizeValues, deadlines, rolloverLotteryId
+    - Use useWaitForTransactionReceipt to wait for confirmation
+    - Return: { lotteryId, creatorSecret, ticketSecrets, isLoading, error }
     - _Requirements: 1.6, 1.7, 11.6_
 
-  - [ ] 12.5 Build ticket distribution UI component
-    - Create TicketDistribution component in fe/src/components/lottery/
-    - Display creator secret with prominent save warning (use shadcn Alert)
-    - Generate redemption URLs for each ticket
-    - Create QR codes for tickets using qrcode.react
-    - Add copy link buttons (use shadcn Button with lucide-react Copy icon)
-    - Add download all option (CSV or JSON export)
+  - [ ] 12.5 Build ticket distribution UI
+    - Create fe/src/components/lottery/TicketDistribution.tsx
+    - Display creator secret in Alert with "⚠️ SAVE THIS SECRET!" warning
+    - Generate redemption URLs: `/ticket?lottery=${id}&ticket=${idx}&secret=${secret}`
+    - Render QR codes using qrcode.react for each ticket
+    - Add copy button for each ticket URL (use navigator.clipboard)
+    - Add "Download All" button to export JSON with all ticket data
     - _Requirements: 1.8, 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [ ] 13. Implement ticket commit UI
 
-  - [ ] 13.1 Create ticket redemption page (fe/src/routes/ticket.tsx)
+  - [ ] 13.1 Create ticket redemption page
 
-    - Parse ticket parameters from URL query string (lottery, ticket, secret)
-    - Use TanStack Router's useSearch hook to get query params
-    - Display ticket information (lottery ID, ticket index)
-    - Show commit deadline countdown using Countdown component
-    - Display "Step 1: Enter Draw" UI with clear instructions
+    - Create fe/src/routes/ticket.tsx with TanStack Router
+    - Use useSearch() to parse query params: { lottery, ticket, secret }
+    - Fetch lottery data using wagmi's useReadContract
+    - Display lottery ID, ticket index, and commit deadline
+    - Show Countdown component for commit deadline
+    - Display "Step 1: Enter Draw" with clear instructions
+    - Handle invalid/missing query params gracefully
     - _Requirements: 2.6, 3.2_
 
-  - [ ] 13.2 Create useCommitTicket hook in fe/src/hooks/
+  - [ ] 13.2 Create useCommitTicket hook
 
-    - Validate commit deadline hasn't passed (check against block.timestamp)
-    - Hash ticket secret using keccak256 from crypto utilities
-    - Use wagmi's useWriteContract to call commitTicket function
-    - Handle sponsored vs standard commits (detect if sponsoredGasPool > 0)
-    - Wait for transaction confirmation
+    - Create fe/src/hooks/useCommitTicket.ts
+    - Import hashSecret from crypto utilities
+    - Check if commit deadline passed using lottery.commitDeadline
+    - Use wagmi's useWriteContract to call commitTicket(lotteryId, ticketIndex, secretHash)
+    - Use useWaitForTransactionReceipt for confirmation
+    - Return: { commit, isLoading, isSuccess, error }
+    - Handle errors: CommitDeadlinePassed, TicketAlreadyCommitted, InvalidTicketSecret
     - _Requirements: 3.3, 3.4, 3.5, 3.6, 11.6_
 
-  - [ ] 13.3 Create TicketCommit component in fe/src/components/ticket/
+  - [ ] 13.3 Create TicketCommit component
 
-    - Show success animation after commit (use tw-animate-css or Framer Motion)
-    - Display "Come back after [reveal time]" message with countdown
-    - Add calendar reminder option (generate .ics file or calendar link)
-    - Store commit status in local storage to persist across page reloads
+    - Create fe/src/components/ticket/TicketCommit.tsx
+    - Show "Enter Draw" button that calls useCommitTicket
+    - Display success animation after commit (tw-animate-css bounce/fade)
+    - Show "✅ Entered! Come back after [reveal time]" message
+    - Add countdown to reveal time
+    - Store commit status in localStorage: `committed_${lotteryId}_${ticketIndex}`
+    - Disable button if already committed or deadline passed
     - _Requirements: 3.6_
 
 - [ ] 14. Implement reveal UI for creators
 
-  - [ ] 14.1 Create lottery dashboard (fe/src/routes/dashboard.tsx)
+  - [ ] 14.1 Create lottery dashboard
 
-    - Use wagmi's useReadContract to fetch lotteries created by connected wallet
-    - Display all lotteries in a grid/list using shadcn Card components
-    - Show lottery status (state enum) and countdown to next deadline
-    - Add "Reveal Lottery" button when state is CommitClosed and reveal time reached
-    - Filter and sort lotteries by status
+    - Create fe/src/routes/dashboard.tsx
+    - Fetch all lotteries where creator === connected wallet address
+    - Use event logs or iterate through lotteryCounter to find creator's lotteries
+    - Display lotteries in grid using shadcn Card components
+    - Show: lottery ID, prize pool, state, commit/reveal/claim deadlines
+    - Add countdown timers for each deadline
+    - Show "Reveal Lottery" button when state === CommitClosed && now >= revealTime
+    - Filter by state: Active, Pending Reveal, Revealed, Finalized
     - _Requirements: 8.1, 8.2, 8.3_
 
-  - [ ] 14.2 Create RevealLotteryModal component in fe/src/components/lottery/
+  - [ ] 14.2 Create RevealLotteryModal component
 
-    - Install shadcn Dialog component (bunx shadcn@latest add dialog)
-    - Prompt for creator secret input
-    - Verify secret matches commitment locally before submitting
-    - Display estimated gas cost using wagmi's useEstimateGas
-    - Show warning about transaction finality
+    - Run: `cd fe && bunx shadcn@latest add dialog`
+    - Create fe/src/components/lottery/RevealLotteryModal.tsx
+    - Accept lotteryId and creatorCommitment as props
+    - Input field for creator secret
+    - Verify keccak256(secret) === creatorCommitment locally before submit
+    - Show error if secret doesn't match: "Invalid secret"
+    - Display estimated gas cost
+    - Show warning: "This action is irreversible and will assign prizes"
     - _Requirements: 4.2, 4.3_
 
-  - [ ] 14.3 Create useRevealLottery hook in fe/src/hooks/
-    - Use wagmi's useWriteContract to call revealLottery function
-    - Pass creator secret as bytes parameter
-    - Wait for transaction confirmation using useWaitForTransactionReceipt
-    - Display success message with lottery state transition
-    - Handle errors (invalid secret, wrong state, etc.)
+  - [ ] 14.3 Create useRevealLottery hook
+    - Create fe/src/hooks/useRevealLottery.ts
+    - Use wagmi's useWriteContract to call revealLottery(lotteryId, creatorSecret)
+    - Convert secret string to bytes using toBytes from viem
+    - Use useWaitForTransactionReceipt for confirmation
+    - Return: { reveal, isLoading, isSuccess, error }
+    - Handle errors: InvalidCreatorSecret, InvalidLotteryState, CommitPeriodNotClosed
     - _Requirements: 4.4, 4.5, 11.6_
 
 - [ ] 15. Implement prize reveal and claim UI
 
-  - [ ] 15.1 Create prize checking UI in TicketReveal component
+  - [ ] 15.1 Create prize checking UI
 
-    - Display "Step 2: Check & Claim!" when lottery state is RevealOpen
-    - Add "Check Prize" button using shadcn Button
-    - Use wagmi's useReadContract to fetch ticket prize amount
-    - Show loading animation while fetching (use tw-animate-css or skeleton)
-    - Disable button if not committed or already redeemed
+    - Update fe/src/routes/ticket.tsx to show "Step 2: Check & Claim!"
+    - Display when lottery.state === RevealOpen
+    - Add "Check Prize" button
+    - Use useReadContract to fetch tickets[lotteryId][ticketIndex].prizeAmount
+    - Show loading spinner while fetching
+    - Disable if !committed or already redeemed
+    - Display prize amount in ETH with formatEther from viem
     - _Requirements: 5.2, 5.3, 7.1_
 
-  - [ ] 15.2 Create PrizeAnimation component in fe/src/components/ticket/
+  - [ ] 15.2 Create PrizeAnimation component
 
-    - Build suspenseful reveal animation (use CSS animations or tw-animate-css)
-    - Add confetti for winners using canvas-confetti library
-    - Show encouraging message for losers (use shadcn Alert with info variant)
-    - Display prize amount prominently with USDC formatting (6 decimals)
-    - Add different animations based on prize tier (big winner vs small prize)
+    - Create fe/src/components/ticket/PrizeAnimation.tsx
+    - Accept prizeAmount as prop
+    - Show suspenseful "Checking..." animation (3 seconds)
+    - If prizeAmount > 0: trigger confetti with canvas-confetti
+    - If prizeAmount > 0: show "🎉 You won X ETH!" with celebration animation
+    - If prizeAmount === 0: show "Better luck next time!" with encouraging message
+    - Use tw-animate-css for animations (bounce, fade, pulse)
     - _Requirements: 5.3, 5.4, 5.5, 7.2, 7.3, 7.4_
 
-  - [ ] 15.3 Create useClaimPrize hook in fe/src/hooks/
+  - [ ] 15.3 Create useClaimPrize hook
 
-    - Fetch gross prize amount from contract
-    - Estimate gas cost in USDC using wagmi's useEstimateGas
-    - Calculate and display net prize (gross - gas)
-    - Use wagmi's useWriteContract to call claimPrize function
-    - Pass ticket secret as bytes parameter
-    - Wait for transaction confirmation
-    - Show success confirmation with actual amounts claimed
+    - Create fe/src/hooks/useClaimPrize.ts
+    - Fetch grossPrize from tickets[lotteryId][ticketIndex].prizeAmount
+    - Estimate gas cost: 50000 * gasPrice (in wei)
+    - Calculate netPrize = grossPrize - gasCost
+    - Display: "Gross: X ETH, Gas: Y ETH, Net: Z ETH"
+    - Use useWriteContract to call claimPrize(lotteryId, ticketIndex, ticketSecret)
+    - Convert secret to bytes using toBytes from viem
+    - Use useWaitForTransactionReceipt for confirmation
+    - Return: { claim, netPrize, isLoading, isSuccess, error }
     - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.12, 11.6_
 
   - [ ] 15.4 Add social sharing features
-    - Create ShareButtons component in fe/src/components/shared/
-    - Generate shareable result text (won X USDC in mystery lottery)
+    - Create fe/src/components/shared/ShareButtons.tsx
+    - Accept prizeAmount and lotteryId as props
+    - Generate Twitter share text: "I just won X ETH in a mystery lottery! 🎉"
     - Add Twitter share button with pre-filled text and URL
-    - Add copy link button using navigator.clipboard API
-    - Optional: Generate shareable image using canvas API
+    - Add "Copy Link" button using navigator.clipboard.writeText()
+    - Show toast notification on successful copy
     - _Requirements: 7.7, 7.8, 13.1, 13.2_
 
 - [ ] 16. Implement countdown and deadline UI
 
-  - [ ] 16.1 Create Countdown component in fe/src/components/shared/
+  - [ ] 16.1 Create Countdown component
 
-    - Accept deadline timestamp as prop
-    - Calculate time remaining using Date.now() and deadline
-    - Update every second using setInterval or useInterval hook
-    - Display different formats: "X days Y hours" or "X hours Y minutes" or "X minutes Y seconds"
-    - Handle expired state with "Deadline passed" message
-    - Use TailwindCSS for styling with color changes as deadline approaches
+    - Create fe/src/components/shared/Countdown.tsx
+    - Accept deadline (Unix timestamp in seconds) as prop
+    - Use useState and useEffect with setInterval to update every second
+    - Calculate remaining: days, hours, minutes, seconds
+    - Display format based on time remaining:
+      - > 1 day: "X days Y hours"
+      - > 1 hour: "X hours Y minutes"
+      - < 1 hour: "X minutes Y seconds"
+    - Show "Deadline passed" when deadline < now
+    - Add color coding: green (>24h), yellow (6-24h), red (<6h)
     - _Requirements: 2.6, 3.2, 5.2, 6.9_
 
-  - [ ] 16.2 Add deadline warnings in ticket and claim UIs
-    - Show "⚠️ Claim within 24 hours!" banner using shadcn Alert (destructive variant)
-    - Display "Claim by [deadline] or prize goes to next lottery" message
-    - Add urgent styling (red/orange colors) when less than 6 hours remain
-    - Add pulsing animation for final hour
+  - [ ] 16.2 Add deadline warnings
+
+    - Add Alert component to ticket.tsx when lottery.state === RevealOpen
+    - Show "⚠️ Claim within 24 hours or prize goes to rollover pool!"
+    - Use shadcn Alert with destructive variant (red)
+    - Display claim deadline: formatDate(lottery.claimDeadline)
+    - Add pulsing animation when < 1 hour remains (tw-animate-pulse)
+    - Change Alert color based on urgency: yellow (>6h), red (<6h)
     - _Requirements: 6.9, 6.10_
 
 - [ ] 17. Implement error handling and validation
 
-  - [ ] 17.1 Create validation utilities in fe/src/lib/validation.ts
+  - [ ] 17.1 Create validation utilities
 
-    - Validate prize sum equals total pool
-    - Validate deadline ordering (commit < reveal < claim)
-    - Validate USDC amounts (positive, within reasonable bounds)
-    - Validate ticket indices and array lengths
-    - Export validation functions for use in forms
+    - Create fe/src/lib/validation.ts
+    - validatePrizeSum(prizes: bigint[]): boolean - sum > 0
+    - validateDeadlines(commit: number, reveal: number): boolean - commit < reveal
+    - validateTicketCount(tickets: number, prizes: number): boolean - tickets >= prizes
+    - validateEthAmount(amount: bigint): boolean - amount > 0 && amount < MAX_SAFE_ETH
+    - Export all validation functions
     - _Requirements: 12.1_
 
   - [ ] 17.2 Handle transaction errors in hooks
 
-    - Parse contract revert reasons from wagmi error objects
-    - Map custom errors to user-friendly messages
-    - Handle user rejection (UserRejectedRequestError)
-    - Handle insufficient gas/balance errors
-    - Display errors using toast notifications or shadcn Alert
+    - Create fe/src/lib/errors.ts with error mapping
+    - Map contract errors to user messages:
+      - CommitDeadlinePassed → "Commit period has ended"
+      - InvalidCreatorSecret → "Invalid creator secret"
+      - TicketAlreadyRedeemed → "Prize already claimed"
+    - Handle wagmi errors:
+      - UserRejectedRequestError → "Transaction cancelled"
+      - InsufficientFundsError → "Insufficient ETH for transaction"
+    - Use shadcn Toast or Alert to display errors
     - _Requirements: 12.2, 12.5_
 
-  - [ ] 17.3 Add state-based error handling in components
-    - Check lottery state before showing actions
-    - Show "Commit period closed" when deadline passed
-    - Show "Already committed" if user already entered
-    - Show "Already redeemed" if prize already claimed
-    - Disable buttons and show explanatory messages
+  - [ ] 17.3 Add state-based error handling
+
+    - In ticket.tsx, check lottery.state before showing actions
+    - If state === CommitOpen && now > commitDeadline: show "Commit period closed"
+    - If ticket.committed: show "Already entered" (check localStorage)
+    - If ticket.redeemed: show "Prize already claimed"
+    - Disable buttons with explanatory tooltips
+    - Use shadcn Badge to show lottery state visually
     - _Requirements: 12.5, 12.6_
 
-- [ ] 18. Add monitoring and analytics
+- [ ]\* 18. Add monitoring and analytics (Optional - Post-MVP)
 
-  - [ ] 18.1 Set up error tracking
-
-    - Integrate Sentry for error monitoring
-    - Track transaction failures
-    - Monitor contract interaction errors
+  - [ ]\* 18.1 Set up error tracking
+    - Install Sentry: `cd fe && bun add @sentry/react`
+    - Configure Sentry in main.tsx with DSN
+    - Track transaction failures and contract errors
     - _Requirements: General quality_
 
   - [ ]\* 18.2 Add user analytics
-    - Track lottery creation events
-    - Track commit and claim rates
+    - Install PostHog or Mixpanel
+    - Track lottery creation, commit, and claim events
     - Monitor conversion funnels
     - _Requirements: General quality_
 
-- [ ] 19. Deploy and verify contracts with Foundry
+- [ ] 19. Deploy and verify contracts
 
   - [ ] 19.1 Configure Arc network in foundry.toml
 
-    - Add Arc testnet RPC URL and chain ID
-    - Add Arc mainnet RPC URL and chain ID
-    - Configure etherscan API key for verification (if Arc has block explorer API)
-    - Set optimizer settings for production deployment
+    - Add Arc testnet configuration to [rpc_endpoints]
+    - Add Arc mainnet configuration
+    - Set optimizer_runs = 200 for production
+    - Configure via_ir = false for compatibility
     - _Requirements: All_
 
   - [ ] 19.2 Deploy to Arc testnet
 
-    - Update script/LotteryFactory.s.sol with proper deployment logic
-    - Use forge script to deploy: forge script script/LotteryFactory.s.sol --rpc-url arc-testnet --broadcast
-    - Verify contract with forge verify-contract (if supported)
-    - Save deployment address to deployments.json or .env
-    - Test with small prize pools and real USDC
+    - Create deployment script: contract/script/DeployLottery.s.sol
+    - Use forge create or forge script to deploy
+    - Command: `forge script script/DeployLottery.s.sol --rpc-url arc-testnet --broadcast --verify`
+    - Save deployment address to .env: LOTTERY_FACTORY_ADDRESS_TESTNET
+    - Test with small prize pools (0.01 ETH)
     - _Requirements: All_
 
   - [ ] 19.3 Deploy to Arc mainnet
-    - Review and audit deployment script
-    - Use forge script with --broadcast for mainnet: forge script script/LotteryFactory.s.sol --rpc-url arc-mainnet --broadcast --verify
-    - Verify contract on Arc block explorer
-    - Transfer ownership if needed using cast send (if Ownable is implemented)
-    - Document deployment addresses in README and frontend config
+    - Review deployment script and contract code
+    - Deploy: `forge script script/DeployLottery.s.sol --rpc-url arc-mainnet --broadcast --verify`
+    - Save address to .env: LOTTERY_FACTORY_ADDRESS_MAINNET
+    - Verify on Arc block explorer
+    - Update frontend config with mainnet address
+    - Document in README.md
     - _Requirements: All_
 
 - [ ] 20. Deploy frontend application
 
   - [ ] 20.1 Configure production environment
 
-    - Create .env.production file in fe/ directory
-    - Set VITE_ARC_RPC_URL for mainnet RPC endpoint
-    - Set VITE_LOTTERY_FACTORY_ADDRESS for deployed contract
-    - Set VITE_USDC_ADDRESS for Arc's native USDC contract
-    - Configure any analytics or monitoring keys
+    - Create fe/.env.production
+    - Set VITE_ARC_CHAIN_ID (Arc mainnet chain ID)
+    - Set VITE_ARC_RPC_URL (Arc mainnet RPC)
+    - Set VITE_LOTTERY_FACTORY_ADDRESS (deployed contract address)
+    - Set VITE_BLOCK_EXPLORER_URL (Arc block explorer)
     - _Requirements: 11.2_
 
-  - [ ] 20.2 Build and deploy with Vite
+  - [ ] 20.2 Build and deploy
 
-    - Run bun run build in fe/ directory to create production bundle
-    - Test production build locally with bun run serve
-    - Deploy to Vercel/Netlify/Cloudflare Pages (connect GitHub repo)
-    - Configure build command: cd fe && bun run build
-    - Configure output directory: fe/dist
-    - Set environment variables in deployment platform
-    - Configure custom domain if needed
+    - Run: `cd fe && bun run build` to create production bundle
+    - Test locally: `bun run serve` and verify all features work
+    - Deploy to Vercel:
+      - Connect GitHub repo
+      - Set build command: `cd fe && bun run build`
+      - Set output directory: `fe/dist`
+      - Add environment variables from .env.production
+    - Test deployed app with Arc testnet first
+    - Switch to mainnet after testing
     - _Requirements: All_
 
-  - [ ] 20.3 Set up monitoring and analytics (optional)
-    - Install Sentry for error tracking (bun add @sentry/react)
-    - Configure Sentry in main.tsx with DSN
-    - Add analytics (PostHog, Mixpanel, or Google Analytics)
-    - Monitor transaction success rates and user flows
+  - [ ]\* 20.3 Set up monitoring (Optional)
+    - Install Sentry: `cd fe && bun add @sentry/react`
+    - Configure in main.tsx with DSN
+    - Monitor transaction success rates
+    - Track user flows and errors
     - _Requirements: General quality_
-
----
-
-## Implementation Status Summary
-
-### ✅ Completed (Tasks 1-6)
-
-**Smart Contract - Core Functionality:**
-- ✅ Project structure and development environment set up
-- ✅ Core data structures implemented (LotteryState enum, Lottery struct, TicketCommitment struct)
-- ✅ Storage mappings and state variables defined (including rollover pool and sponsored gas fields)
-- ✅ Custom errors and events defined for all operations
-- ✅ Lottery creation function with full validation implemented
-- ✅ View functions for lottery data access added (status, prizes, creator, tickets, reveal info)
-- ✅ Helper view functions (isCommitPeriodOpen, isRevealReady, isClaimPeriodActive)
-- ✅ Commit phase fully implemented with commitTicket function
-- ✅ Commit deadline enforcement and state transition (closeCommitPeriod)
-- ✅ **Reveal phase fully implemented with prize assignment**
-- ✅ **Prize-centric assignment algorithm (O(M) complexity)**
-- ✅ **Prize cascade for UNCOMMITTED tickets to rollover pool**
-- ✅ **Randomness generation using creator secret + block.prevrandao**
-- ✅ **Claim phase with gasless claiming implemented**
-- ✅ Comprehensive tests written (100+ test cases covering creation, commit, reveal phases)
-
-**Partial Implementation:**
-- 🟡 **Task 7.1: Uncommitted ticket prize cascade** - Works during reveal phase
-- ❌ **Task 7.2-7.3: Unclaimed prize forfeiture** - NOT implemented (critical gap)
-
-**Test Coverage:**
-- ✅ Constructor and state variable initialization
-- ✅ Lottery creation with validation (prize sum, deadlines, array lengths)
-- ✅ Fuzz testing for lottery creation
-- ✅ All view/accessor functions tested
-- ✅ Commit ticket functionality (success, errors, multiple tickets, partial commitment)
-- ✅ Close commit period state transition
-- ✅ Reveal lottery with secret verification
-- ✅ Prize assignment with full/partial/no commitments
-- ✅ Randomness generation verification
-- ✅ Prize cascade to rollover pool
-- ✅ Primary use case: 3 prizes, 100 tickets
-
-### 🚧 In Progress (Tasks 7-20)
-
-**Smart Contract - Remaining Functionality:**
-- **CRITICAL: Complete forfeiture mechanism (task 7.2-7.3)** - Handle unclaimed prizes after claim deadline
-- Add ReentrancyGuard to claimPrize (task 8.1) - Production security hardening
-- Implement timeout refund mechanism (task 9) - Safety for failed reveals
-- Complete test suite for claim phase (task 10.4-10.5) - Test claiming and full lifecycle
-
-**Frontend - Full Implementation:**
-- Web3 integration setup (task 11) - **NEXT PRIORITY**
-- Lottery creation UI (task 12)
-- Ticket commit UI (task 13)
-- Reveal UI for creators (task 14)
-- Prize reveal and claim UI (task 15)
-- Countdown and deadline UI (task 16)
-- Error handling and validation (task 17)
-- Monitoring and analytics (task 18)
-
-**Deployment:**
-- Contract deployment to Arc testnet/mainnet (task 19)
-- Frontend deployment (task 20)
-
-### 📋 Next Steps (Priority Order)
-
-**🚨 CRITICAL GAP IDENTIFIED:**
-The forfeiture mechanism is incomplete. While uncommitted ticket prizes cascade during reveal, there's NO mechanism to handle prizes that are assigned to committed tickets but never claimed after the deadline. This is a critical missing piece for a production lottery system.
-
-1. **🔴 CRITICAL: Implement finalizeLottery function (task 7.2)** - Complete forfeiture mechanism
-   - Create finalizeLottery function to process unclaimed prizes after claim deadline
-   - Iterate through assigned prizes and identify unclaimed ones
-   - Add unclaimed amounts to lotteryRolloverPool
-   - Transition lottery state to Finalized
-   - Emit PrizesForfeited event with total forfeited amount
-   - **Impact:** Without this, unclaimed prizes are locked forever, breaking the lottery economics
-
-2. **Implement rollover integration (task 7.3)** - Enable prize pool growth
-   - Add mechanism for new lotteries to pull from rollover pool
-   - Update createLottery to optionally include rollover funds
-   - Add view function to check available rollover balance
-   - **Impact:** Enables progressive jackpots and incentivizes participation
-
-3. **Add ReentrancyGuard (task 8.1)** - Production security
-   - Import Solady's ReentrancyGuard
-   - Apply nonReentrant modifier to claimPrize
-   - Test reentrancy protection
-
-4. **Implement timeout refund (task 9)** - Safety mechanism
-   - Allow refund if creator fails to reveal within 24h
-   - Refund all prizes to creator
-   - Transition to Finalized state
-
-5. **Complete claim phase tests (task 10.4-10.5)** - Test coverage
-   - Test successful claims with gasless mechanism
-   - Test double redemption prevention
-   - Integration tests for full lifecycle including forfeiture
-
-6. **Begin frontend integration (task 11)** - Start UI development
-   - Install Web3 dependencies (wagmi, viem, RainbowKit)
-   - Configure Arc blockchain connection
-   - Generate contract types and ABIs
-
----
-
-## Notes
-
-- All tasks reference specific requirements from requirements.md
-- Tasks marked with \* are optional or can be deferred to post-MVP
-- Each task should be completed and tested before moving to the next
-- Smart contract tasks (3-10) should be completed before frontend tasks (11-17)
-- Integration testing should happen after both contract and frontend are functional
-- Solady library is already installed in contract/lib/solady for gas-optimized utilities
-- Frontend already has React, TanStack Router, Tailwind, and shadcn/ui configured
-
-### ⚠️ Implementation Notes
-
-#### Arc Blockchain Native Currency
-
-**Arc blockchain uses native ETH as its base currency.** The current contract implementation correctly uses native ETH (msg.value) for prize pools. While the requirements and design documents mention "USDC", the implementation uses native ETH which is simpler and more gas-efficient.
-
-**Current Implementation:**
-- ✅ Uses native ETH transfers via msg.value
-- ✅ All prize amounts are in wei (18 decimals for ETH)
-- ✅ Simpler and more gas-efficient than ERC20 tokens
-- ✅ No external token contract dependencies
-- ✅ Gasless claiming implemented with gas refund to tx.origin
-
-**Claim Phase Implementation:**
-- ✅ Uses native ETH transfers with `payable` addresses
-- ✅ Calculates gas costs in wei (50,000 gas * tx.gasprice)
-- ✅ Transfers net prize using `address.call{value: amount}("")`
-- ✅ Refunds gas to tx.origin using same pattern
-- ✅ Follows checks-effects-interactions pattern for security
-
-**If USDC token support is needed later:**
-- Add ERC20 USDC handling using SafeTransferLib from Solady
-- Support both native ETH and USDC token prizes
-- Update UI to handle both 18 decimals (ETH) and 6 decimals (USDC)
-
-**For now, all references to "USDC" in tasks should be interpreted as native ETH on Arc blockchain.**
-
-#### Contract Implementation Progress
-
-**Smart Contract Status: 75% Complete (Critical Gap Identified)**
-
-The smart contract has excellent coverage of core functionality, but a critical forfeiture mechanism is missing:
-
-✅ **Fully Implemented:**
-- Lottery creation with comprehensive validation
-- Commit phase with deadline enforcement
-- Reveal phase with prize-centric assignment algorithm
-- Claim phase with gasless claiming mechanism
-- Prize cascade to rollover pool for UNCOMMITTED tickets (during reveal)
-- Access control and input validation
-- Custom errors and events for all operations
-- Extensive view functions for data access
-
-� **CRmITICAL GAP - Forfeiture Mechanism:**
-- ❌ No finalizeLottery function to process UNCLAIMED prizes after claim deadline
-- ❌ No mechanism to add unclaimed prizes to rollover pool
-- ❌ No PrizesForfeited event emission
-- ❌ No integration to add rollover funds to future lotteries
-- **Impact:** Unclaimed prizes are locked forever, breaking lottery economics and user trust
-
-**What Works vs What's Missing:**
-- ✅ Uncommitted tickets → prizes cascade during reveal (works)
-- ❌ Committed but unclaimed tickets → prizes locked forever (broken)
-
-🔧 **Remaining Work:**
-- **PRIORITY 1:** Implement finalizeLottery function for unclaimed prize forfeiture
-- **PRIORITY 2:** Add rollover integration with new lotteries
-- Add ReentrancyGuard to claimPrize for production security
-- Implement timeout refund mechanism for failed reveals
-- Complete test coverage for claim phase and full lifecycle
-
-**Frontend Status: 0% Complete**
-
-The frontend has basic React + TanStack Router structure but no lottery-specific implementation:
-
-📦 **Available:**
-- React 19.2 + TanStack Router v1.132
-- TailwindCSS v4 + shadcn/ui components
-- Vite build system
-- Basic routing structure
-
-❌ **Not Yet Installed:**
-- wagmi + viem (Web3 integration)
-- RainbowKit (wallet connection)
-- Contract types and ABIs
-- Any lottery-specific components or hooks
-
-**Next Priority: Frontend Development**
-
-With the smart contract core functionality complete, the next major milestone is frontend development. This requires:
-1. Installing Web3 dependencies (wagmi, viem, RainbowKit)
-2. Configuring Arc blockchain connection
-3. Generating contract types from ABIs
-4. Building lottery creation, commit, and claim UIstion:
-
-**✅ Completed:**
-- All data structures and state management
-- Lottery creation with comprehensive validation
-- Full commit phase implementation
-- State transition management (CommitOpen → CommitClosed)
-- Extensive view functions for data access
-- 100+ test cases with fuzz testing
-
-**🎯 Next Critical Path:**
-1. Reveal phase (task 5) - Enables lottery completion
-2. Claim phase (task 6) - Enables prize distribution
-3. Forfeiture (task 7) - Handles unclaimed prizes
-4. Security hardening (task 8) - Production readiness
-
-**Frontend Status:**
-- Basic React + TanStack Router structure in place
-- shadcn/ui components available (class-variance-authority, lucide-react)
-- TailwindCSS v4 configured with tw-animate-css
-- No Web3 integration yet (wagmi/viem not installed)
-- No lottery-specific components yet
-- Ready to begin implementation once claim phase is complete

@@ -19,6 +19,7 @@ contract LotteryFactory {
         CommitClosed, // Commit deadline passed, awaiting reveal
         RevealOpen, // Lottery revealed, prizes claimable
         Finalized // All prizes claimed or forfeited
+
     }
 
     // ============ Structs ============
@@ -149,11 +150,7 @@ contract LotteryFactory {
      * @param ticketIndex Index of the committed ticket
      * @param holder Address that committed the ticket
      */
-    event TicketCommitted(
-        uint256 indexed lotteryId,
-        uint256 indexed ticketIndex,
-        address holder
-    );
+    event TicketCommitted(uint256 indexed lotteryId, uint256 indexed ticketIndex, address holder);
 
     /**
      * @notice Emitted when a lottery is revealed
@@ -161,11 +158,7 @@ contract LotteryFactory {
      * @param randomSeed Generated random seed for prize assignment
      * @param revealedAt Timestamp of reveal
      */
-    event LotteryRevealed(
-        uint256 indexed lotteryId,
-        uint256 randomSeed,
-        uint256 revealedAt
-    );
+    event LotteryRevealed(uint256 indexed lotteryId, uint256 randomSeed, uint256 revealedAt);
 
     /**
      * @notice Emitted when a prize is claimed
@@ -191,11 +184,7 @@ contract LotteryFactory {
      * @param forfeitedAmount Total amount of forfeited prizes
      * @param processedAt Timestamp of forfeiture processing
      */
-    event PrizesForfeited(
-        uint256 indexed lotteryId,
-        uint256 forfeitedAmount,
-        uint256 processedAt
-    );
+    event PrizesForfeited(uint256 indexed lotteryId, uint256 forfeitedAmount, uint256 processedAt);
 
     // ============ Constructor ============
 
@@ -216,9 +205,7 @@ contract LotteryFactory {
      * @return claimDeadline Timestamp when claim period ends
      * @return createdAt Timestamp when lottery was created
      */
-    function getLotteryStatus(
-        uint256 lotteryId
-    )
+    function getLotteryStatus(uint256 lotteryId)
         external
         view
         returns (
@@ -230,13 +217,7 @@ contract LotteryFactory {
         )
     {
         Lottery storage lottery = lotteries[lotteryId];
-        return (
-            lottery.state,
-            lottery.commitDeadline,
-            lottery.revealTime,
-            lottery.claimDeadline,
-            lottery.createdAt
-        );
+        return (lottery.state, lottery.commitDeadline, lottery.revealTime, lottery.claimDeadline, lottery.createdAt);
     }
 
     /**
@@ -246,9 +227,7 @@ contract LotteryFactory {
      * @return totalPrizePool Total USDC in the prize pool
      * @return prizeValues Array of individual prize amounts
      */
-    function getLotteryPrizes(
-        uint256 lotteryId
-    )
+    function getLotteryPrizes(uint256 lotteryId)
         external
         view
         returns (uint256 totalPrizePool, uint256[] memory prizeValues)
@@ -264,9 +243,7 @@ contract LotteryFactory {
      * @return creator Address that created the lottery
      * @return creatorCommitment Hash of creator's secret
      */
-    function getLotteryCreator(
-        uint256 lotteryId
-    ) external view returns (address creator, bytes32 creatorCommitment) {
+    function getLotteryCreator(uint256 lotteryId) external view returns (address creator, bytes32 creatorCommitment) {
         Lottery storage lottery = lotteries[lotteryId];
         return (lottery.creator, lottery.creatorCommitment);
     }
@@ -277,9 +254,7 @@ contract LotteryFactory {
      * @param lotteryId The lottery identifier
      * @return ticketSecretHashes Array of hashes for ticket secrets
      */
-    function getLotteryTickets(
-        uint256 lotteryId
-    ) external view returns (bytes32[] memory ticketSecretHashes) {
+    function getLotteryTickets(uint256 lotteryId) external view returns (bytes32[] memory ticketSecretHashes) {
         return lotteries[lotteryId].ticketSecretHashes;
     }
 
@@ -290,9 +265,7 @@ contract LotteryFactory {
      * @return randomSeed Generated random seed (0 if not revealed)
      * @return state Current state of the lottery
      */
-    function getLotteryReveal(
-        uint256 lotteryId
-    ) external view returns (uint256 randomSeed, LotteryState state) {
+    function getLotteryReveal(uint256 lotteryId) external view returns (uint256 randomSeed, LotteryState state) {
         Lottery storage lottery = lotteries[lotteryId];
         return (lottery.randomSeed, lottery.state);
     }
@@ -303,13 +276,9 @@ contract LotteryFactory {
      * @param lotteryId The lottery identifier
      * @return bool True if commit period is open
      */
-    function isCommitPeriodOpen(
-        uint256 lotteryId
-    ) external view returns (bool) {
+    function isCommitPeriodOpen(uint256 lotteryId) external view returns (bool) {
         Lottery storage lottery = lotteries[lotteryId];
-        return
-            lottery.state == LotteryState.CommitOpen &&
-            block.timestamp < lottery.commitDeadline;
+        return lottery.state == LotteryState.CommitOpen && block.timestamp < lottery.commitDeadline;
     }
 
     /**
@@ -320,9 +289,7 @@ contract LotteryFactory {
      */
     function isRevealReady(uint256 lotteryId) external view returns (bool) {
         Lottery storage lottery = lotteries[lotteryId];
-        return
-            lottery.state == LotteryState.CommitClosed &&
-            block.timestamp >= lottery.revealTime;
+        return lottery.state == LotteryState.CommitClosed && block.timestamp >= lottery.revealTime;
     }
 
     /**
@@ -331,25 +298,45 @@ contract LotteryFactory {
      * @param lotteryId The lottery identifier
      * @return bool True if claim period is active
      */
-    function isClaimPeriodActive(
-        uint256 lotteryId
-    ) external view returns (bool) {
+    function isClaimPeriodActive(uint256 lotteryId) external view returns (bool) {
         Lottery storage lottery = lotteries[lotteryId];
-        return
-            lottery.state == LotteryState.RevealOpen &&
-            block.timestamp < lottery.claimDeadline;
+        return lottery.state == LotteryState.RevealOpen && block.timestamp < lottery.claimDeadline;
+    }
+
+    /**
+     * @notice Get available rollover pool balance from a finalized lottery
+     * @dev Returns the amount of forfeited prizes available for future lotteries
+     * @param lotteryId The lottery identifier
+     * @return rolloverAmount Amount of ETH available in the rollover pool
+     */
+    function getRolloverPool(uint256 lotteryId) external view returns (uint256 rolloverAmount) {
+        return lotteryRolloverPool[lotteryId];
+    }
+
+    /**
+     * @notice Get total available rollover funds across all finalized lotteries
+     * @dev Sums up all rollover pools to show total available for new lotteries
+     * @return totalRollover Total amount of ETH available from all rollover pools
+     */
+    function getTotalRolloverPool() external view returns (uint256 totalRollover) {
+        totalRollover = 0;
+        for (uint256 i = 1; i < lotteryCounter; i++) {
+            totalRollover += lotteryRolloverPool[i];
+        }
+        return totalRollover;
     }
 
     // ============ External Functions ============
 
     /**
      * @notice Create a new lottery with hidden prize values
-     * @dev Creator must deposit total prize pool in USDC
+     * @dev Creator must deposit total prize pool in ETH, optionally including rollover funds
      * @param _creatorCommitment Hash of creator's secret for randomness
      * @param _ticketSecretHashes Array of hashes for ticket secrets
-     * @param _prizeValues Array of prize amounts in USDC (6 decimals)
+     * @param _prizeValues Array of prize amounts in wei
      * @param _commitDeadline Timestamp when commit period ends
      * @param _revealTime Timestamp when lottery can be revealed
+     * @param _rolloverLotteryId Optional: lottery ID to pull rollover funds from (0 for none)
      * @return lotteryId Unique identifier for the created lottery
      */
     function createLottery(
@@ -357,7 +344,8 @@ contract LotteryFactory {
         bytes32[] calldata _ticketSecretHashes,
         uint256[] calldata _prizeValues,
         uint256 _commitDeadline,
-        uint256 _revealTime
+        uint256 _revealTime,
+        uint256 _rolloverLotteryId
     ) external payable returns (uint256 lotteryId) {
         // Validate inputs
         if (_prizeValues.length == 0) revert EmptyPrizeArray();
@@ -369,8 +357,20 @@ contract LotteryFactory {
             totalPrizePool += _prizeValues[i];
         }
 
-        // Validate prize sum matches deposited amount
-        if (msg.value != totalPrizePool) revert InvalidPrizeSum();
+        // Handle rollover funds if specified
+        uint256 rolloverAmount = 0;
+        if (_rolloverLotteryId > 0) {
+            rolloverAmount = lotteryRolloverPool[_rolloverLotteryId];
+            if (rolloverAmount > 0) {
+                // Add rollover to total prize pool
+                totalPrizePool += rolloverAmount;
+                // Clear the rollover pool
+                lotteryRolloverPool[_rolloverLotteryId] = 0;
+            }
+        }
+
+        // Validate prize sum matches deposited amount (excluding rollover)
+        if (msg.value + rolloverAmount != totalPrizePool) revert InvalidPrizeSum();
 
         // Validate deadlines are in correct order
         // commit < reveal < claim (claim is reveal + 24 hours)
@@ -398,12 +398,7 @@ contract LotteryFactory {
 
         // Emit event
         emit LotteryCreated(
-            lotteryId,
-            msg.sender,
-            totalPrizePool,
-            _ticketSecretHashes.length,
-            _commitDeadline,
-            _revealTime
+            lotteryId, msg.sender, totalPrizePool, _ticketSecretHashes.length, _commitDeadline, _revealTime
         );
     }
 
@@ -436,11 +431,7 @@ contract LotteryFactory {
      * @param _ticketIndex Index of the ticket to commit
      * @param _ticketSecretHash Hash of the ticket secret for later verification
      */
-    function commitTicket(
-        uint256 _lotteryId,
-        uint256 _ticketIndex,
-        bytes32 _ticketSecretHash
-    ) external {
+    function commitTicket(uint256 _lotteryId, uint256 _ticketIndex, bytes32 _ticketSecretHash) external {
         Lottery storage lottery = lotteries[_lotteryId];
 
         // Verify commit deadline has not passed
@@ -464,12 +455,8 @@ contract LotteryFactory {
         }
 
         // Store ticket commitment with holder address
-        tickets[_lotteryId][_ticketIndex] = TicketCommitment({
-            holder: msg.sender,
-            committed: true,
-            redeemed: false,
-            prizeAmount: 0
-        });
+        tickets[_lotteryId][_ticketIndex] =
+            TicketCommitment({holder: msg.sender, committed: true, redeemed: false, prizeAmount: 0});
 
         // Emit event
         emit TicketCommitted(_lotteryId, _ticketIndex, msg.sender);
@@ -481,10 +468,7 @@ contract LotteryFactory {
      * @param _lotteryId The lottery identifier
      * @param _creatorSecret The creator's secret that matches the commitment
      */
-    function revealLottery(
-        uint256 _lotteryId,
-        bytes calldata _creatorSecret
-    ) external {
+    function revealLottery(uint256 _lotteryId, bytes calldata _creatorSecret) external {
         Lottery storage lottery = lotteries[_lotteryId];
 
         // Verify caller is the lottery creator
@@ -510,9 +494,7 @@ contract LotteryFactory {
 
         // Generate random seed by combining creator secret with block.prevrandao
         // This provides unpredictable randomness that neither creator nor miners can manipulate
-        lottery.randomSeed = uint256(
-            keccak256(abi.encodePacked(_creatorSecret, block.prevrandao))
-        );
+        lottery.randomSeed = uint256(keccak256(abi.encodePacked(_creatorSecret, block.prevrandao)));
 
         // Assign prizes to committed tickets using prize-centric algorithm
         _assignPrizes(_lotteryId);
@@ -531,11 +513,7 @@ contract LotteryFactory {
      * @param _ticketIndex Index of the ticket to claim
      * @param _ticketSecret The ticket secret that matches the stored hash
      */
-    function claimPrize(
-        uint256 _lotteryId,
-        uint256 _ticketIndex,
-        bytes calldata _ticketSecret
-    ) external {
+    function claimPrize(uint256 _lotteryId, uint256 _ticketIndex, bytes calldata _ticketSecret) external {
         Lottery storage lottery = lotteries[_lotteryId];
         TicketCommitment storage ticket = tickets[_lotteryId][_ticketIndex];
 
@@ -575,22 +553,58 @@ contract LotteryFactory {
         ticket.redeemed = true;
 
         // Transfer net prize to winner
-        (bool successWinner, ) = payable(msg.sender).call{value: netPrize}("");
+        (bool successWinner,) = payable(msg.sender).call{value: netPrize}("");
         require(successWinner, "Transfer to winner failed");
 
         // Refund gas cost to tx.origin (relayer/caller)
-        (bool successRelayer, ) = payable(tx.origin).call{value: gasCost}("");
+        (bool successRelayer,) = payable(tx.origin).call{value: gasCost}("");
         require(successRelayer, "Gas refund failed");
 
         // Emit event with gross, net, and gas amounts
-        emit PrizeClaimed(
-            _lotteryId,
-            _ticketIndex,
-            msg.sender,
-            grossPrize,
-            netPrize,
-            gasCost
-        );
+        emit PrizeClaimed(_lotteryId, _ticketIndex, msg.sender, grossPrize, netPrize, gasCost);
+    }
+
+    /**
+     * @notice Finalize lottery and process unclaimed prizes after claim deadline
+     * @dev Can be called by anyone after claim deadline to forfeit unclaimed prizes
+     * @param _lotteryId The lottery identifier
+     */
+    function finalizeLottery(uint256 _lotteryId) external {
+        Lottery storage lottery = lotteries[_lotteryId];
+
+        // Verify lottery is in RevealOpen state
+        if (lottery.state != LotteryState.RevealOpen) {
+            revert InvalidLotteryState();
+        }
+
+        // Verify claim deadline has passed
+        if (block.timestamp < lottery.claimDeadline) {
+            revert CommitPeriodNotClosed();
+        }
+
+        // Iterate through all tickets and identify unclaimed prizes
+        uint256 totalForfeited = 0;
+        uint256 totalTickets = lottery.ticketSecretHashes.length;
+
+        for (uint256 i = 0; i < totalTickets; i++) {
+            TicketCommitment storage ticket = tickets[_lotteryId][i];
+
+            // If ticket was committed, has a prize, but wasn't redeemed
+            if (ticket.committed && ticket.prizeAmount > 0 && !ticket.redeemed) {
+                totalForfeited += ticket.prizeAmount;
+            }
+        }
+
+        // Add forfeited prizes to rollover pool
+        if (totalForfeited > 0) {
+            lotteryRolloverPool[_lotteryId] += totalForfeited;
+        }
+
+        // Transition lottery state to Finalized
+        lottery.state = LotteryState.Finalized;
+
+        // Emit event with total forfeited amount
+        emit PrizesForfeited(_lotteryId, totalForfeited, block.timestamp);
     }
 
     // ============ Internal Functions ============
@@ -607,34 +621,23 @@ contract LotteryFactory {
         uint256 remainingTickets = committedTickets.length;
 
         // For each prize, randomly select from remaining committed tickets
-        for (
-            uint256 prizeIdx = 0;
-            prizeIdx < lottery.prizeValues.length;
-            prizeIdx++
-        ) {
+        for (uint256 prizeIdx = 0; prizeIdx < lottery.prizeValues.length; prizeIdx++) {
             // If no more committed tickets, remaining prizes go to rollover pool
             if (remainingTickets == 0) {
-                lotteryRolloverPool[_lotteryId] += lottery.prizeValues[
-                    prizeIdx
-                ];
+                lotteryRolloverPool[_lotteryId] += lottery.prizeValues[prizeIdx];
                 continue;
             }
 
             // Generate random index for this prize using seed and prize index
-            uint256 randomValue = uint256(
-                keccak256(abi.encodePacked(lottery.randomSeed, prizeIdx))
-            );
+            uint256 randomValue = uint256(keccak256(abi.encodePacked(lottery.randomSeed, prizeIdx)));
             uint256 winnerIndex = randomValue % remainingTickets;
             uint256 winningTicket = committedTickets[winnerIndex];
 
             // Assign prize to the winning ticket
-            tickets[_lotteryId][winningTicket].prizeAmount = lottery
-                .prizeValues[prizeIdx];
+            tickets[_lotteryId][winningTicket].prizeAmount = lottery.prizeValues[prizeIdx];
 
             // Remove winner from pool (swap with last element, reduce length)
-            committedTickets[winnerIndex] = committedTickets[
-                remainingTickets - 1
-            ];
+            committedTickets[winnerIndex] = committedTickets[remainingTickets - 1];
             remainingTickets--;
         }
     }
@@ -645,9 +648,7 @@ contract LotteryFactory {
      * @param _lotteryId The lottery identifier
      * @return committedTickets Array of ticket indices that were committed
      */
-    function _getCommittedTickets(
-        uint256 _lotteryId
-    ) internal view returns (uint256[] memory committedTickets) {
+    function _getCommittedTickets(uint256 _lotteryId) internal view returns (uint256[] memory committedTickets) {
         Lottery storage lottery = lotteries[_lotteryId];
         uint256 totalTickets = lottery.ticketSecretHashes.length;
 
