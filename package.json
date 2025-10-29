@@ -7,6 +7,7 @@
     "forge:install": "cd contract && forge install",
     "forge:build": "cd contract && forge build",
     "forge:test": "cd contract && forge test",
+    "forge:deploy":"cd contract && forge script script/LotteryFactory.s.sol:LotteryFactoryScript",
     "fe:dev": "cd fe && bun dev"
   },
   "devDependencies": {
