@@ -1444,6 +1444,9 @@ contract LotteryFactoryTest is Test {
             }
         }
 
+        // Set gas price for claim
+        vm.txGasPrice(10 gwei);
+
         // Claim the prize
         address winner = address(uint160(winningTicket + 1));
         uint256 balanceBefore = winner.balance;
@@ -1458,6 +1461,261 @@ contract LotteryFactoryTest is Test {
         // Verify ticket is marked as redeemed
         (,, bool redeemed,) = factory.tickets(lotteryId, winningTicket);
         assertTrue(redeemed, "Ticket should be marked as redeemed");
+    }
+
+    function test_ClaimPrize_GaslessWithGasCostCalculation() public {
+        // Setup lottery
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 10e18; // 10 ETH
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 10e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address user = address(0x1);
+        vm.prank(user);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Set gas price
+        uint256 gasPrice = 10 gwei;
+        vm.txGasPrice(gasPrice);
+
+        // Calculate expected gas cost
+        uint256 expectedGasCost = 50000 * gasPrice;
+        uint256 expectedNetPrize = 10e18 - expectedGasCost;
+
+        // Record balances before claim
+        uint256 userBalanceBefore = user.balance;
+        uint256 relayerBalanceBefore = tx.origin.balance;
+
+        // Claim prize
+        vm.prank(user);
+        factory.claimPrize(lotteryId, 0, "ticket_0");
+
+        // Verify net prize transferred to winner
+        uint256 userBalanceAfter = user.balance;
+        assertEq(userBalanceAfter - userBalanceBefore, expectedNetPrize, "Winner should receive net prize");
+
+        // Verify gas refund to tx.origin
+        uint256 relayerBalanceAfter = tx.origin.balance;
+        assertEq(relayerBalanceAfter - relayerBalanceBefore, expectedGasCost, "Relayer should receive gas refund");
+    }
+
+    function test_ClaimPrize_NetPrizeTransferToWinner() public {
+        // Setup lottery
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 5e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address winner = address(0x123);
+        vm.prank(winner);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Set gas price
+        vm.txGasPrice(15 gwei);
+        uint256 gasCost = 50000 * 15 gwei;
+        uint256 expectedNetPrize = 5e18 - gasCost;
+
+        // Claim and verify
+        uint256 balanceBefore = winner.balance;
+        vm.prank(winner);
+        factory.claimPrize(lotteryId, 0, "ticket_0");
+
+        assertEq(winner.balance - balanceBefore, expectedNetPrize, "Net prize should be transferred");
+    }
+
+    function test_ClaimPrize_GasRefundToTxOrigin() public {
+        // Setup lottery
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 8e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 8e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address winner = address(0x456);
+        vm.prank(winner);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Set gas price
+        vm.txGasPrice(20 gwei);
+        uint256 expectedGasRefund = 50000 * 20 gwei;
+
+        // Record tx.origin balance
+        uint256 originBalanceBefore = tx.origin.balance;
+
+        // Claim prize
+        vm.prank(winner);
+        factory.claimPrize(lotteryId, 0, "ticket_0");
+
+        // Verify gas refund to tx.origin
+        assertEq(tx.origin.balance - originBalanceBefore, expectedGasRefund, "Gas should be refunded to tx.origin");
+    }
+
+    function test_ClaimPrize_RevertsWithoutCommit() public {
+        // Setup lottery
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 5e18;
+        prizeValues[1] = 3e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 8e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Only commit ticket 0, not ticket 1
+        address user1 = address(0x1);
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Try to claim uncommitted ticket 1
+        address user2 = address(0x2);
+        vm.txGasPrice(10 gwei);
+        vm.prank(user2);
+        vm.expectRevert(LotteryFactory.TicketNotCommitted.selector);
+        factory.claimPrize(lotteryId, 1, "ticket_1");
+    }
+
+    function test_ClaimPrize_RevertsOnDoubleRedemption() public {
+        // Setup lottery
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 10e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 10e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address winner = address(0x1);
+        vm.prank(winner);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // First claim should succeed
+        vm.txGasPrice(10 gwei);
+        vm.prank(winner);
+        factory.claimPrize(lotteryId, 0, "ticket_0");
+
+        // Second claim should revert
+        vm.prank(winner);
+        vm.expectRevert(LotteryFactory.TicketAlreadyRedeemed.selector);
+        factory.claimPrize(lotteryId, 0, "ticket_0");
+    }
+
+    function test_ClaimPrize_RevertsWithInvalidSecret() public {
+        // Setup lottery
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 10e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 10e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address winner = address(0x1);
+        vm.prank(winner);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Try to claim with wrong secret
+        vm.txGasPrice(10 gwei);
+        vm.prank(winner);
+        vm.expectRevert(LotteryFactory.InvalidTicketSecret.selector);
+        factory.claimPrize(lotteryId, 0, "wrong_secret");
     }
 
     function test_ClaimPrize_EmitsEvent() public {
@@ -2265,6 +2523,377 @@ contract LotteryFactoryRefundTest is Test {
         // Verify creator received refund
         uint256 creatorBalanceAfter = creator.balance;
         assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive full refund");
+
+        // Verify state is Finalized
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
+    }
+}
+
+// ============ Integration Tests for Full Lifecycle ============
+
+contract LotteryFactoryIntegrationTest is Test {
+    LotteryFactory public factory;
+
+    event LotteryCreated(
+        uint256 indexed lotteryId,
+        address indexed creator,
+        uint256 totalPrizePool,
+        uint256 numberOfTickets,
+        uint256 commitDeadline,
+        uint256 revealTime
+    );
+
+    event TicketCommitted(uint256 indexed lotteryId, uint256 indexed ticketIndex, address holder);
+
+    event LotteryRevealed(uint256 indexed lotteryId, uint256 randomSeed, uint256 revealedAt);
+
+    event PrizeClaimed(
+        uint256 indexed lotteryId,
+        uint256 indexed ticketIndex,
+        address winner,
+        uint256 grossPrize,
+        uint256 netPrize,
+        uint256 gasCost
+    );
+
+    event PrizesForfeited(uint256 indexed lotteryId, uint256 forfeitedAmount, uint256 processedAt);
+
+    function setUp() public {
+        factory = new LotteryFactory();
+    }
+
+    // Receive function to accept ETH
+    receive() external payable {}
+
+    /**
+     * @notice Test complete lottery flow: create → commit → reveal → claim → finalize
+     */
+    function test_Integration_FullLotteryLifecycle() public {
+        // Setup lottery
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 10e18;
+        prizeValues[1] = 5e18;
+        prizeValues[2] = 2e18;
+
+        uint256 totalPrize = 17e18;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        // Step 1: Create lottery
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        assertEq(lotteryId, 1, "Lottery ID should be 1");
+
+        // Step 2: Commit all tickets
+        address user1 = address(0x1);
+        address user2 = address(0x2);
+        address user3 = address(0x3);
+
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        vm.prank(user2);
+        factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
+
+        vm.prank(user3);
+        factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
+
+        // Step 3: Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Step 4: Reveal lottery
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify state is RevealOpen
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "State should be RevealOpen");
+
+        // Step 5: Claim all prizes
+        vm.txGasPrice(10 gwei);
+
+        for (uint256 i = 0; i < 3; i++) {
+            (address holder,, bool redeemed, uint256 prize) = factory.tickets(lotteryId, i);
+            if (prize > 0) {
+                vm.prank(holder);
+                factory.claimPrize(lotteryId, i, abi.encodePacked("ticket_", vm.toString(i)));
+
+                // Verify ticket is redeemed
+                (,, bool redeemedAfter,) = factory.tickets(lotteryId, i);
+                assertTrue(redeemedAfter, "Ticket should be redeemed");
+            }
+        }
+
+        // Step 6: Finalize lottery
+        vm.warp(revealTime + 24 hours + 1);
+        factory.finalizeLottery(lotteryId);
+
+        // Verify state is Finalized
+        (,,,,,,, LotteryFactory.LotteryState finalState,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(finalState), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
+    }
+
+    /**
+     * @notice Test multiple participants with different addresses
+     */
+    function test_Integration_MultipleParticipants() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            ticketSecretHashes[i] = keccak256(abi.encodePacked("ticket_", i));
+        }
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 5e18;
+        prizeValues[1] = 3e18;
+        prizeValues[2] = 2e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 10e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit tickets from different users
+        address[] memory users = new address[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            users[i] = address(uint160(i + 100));
+            vm.prank(users[i]);
+            factory.commitTicket(lotteryId, i, ticketSecretHashes[i]);
+        }
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify exactly 3 winners
+        uint256 winnerCount = 0;
+        for (uint256 i = 0; i < 5; i++) {
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
+            if (prize > 0) {
+                winnerCount++;
+            }
+        }
+
+        assertEq(winnerCount, 3, "Should have exactly 3 winners");
+    }
+
+    /**
+     * @notice Test partial commitment with forfeiture
+     */
+    function test_Integration_PartialCommitmentWithForfeiture() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](5);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+        ticketSecretHashes[3] = keccak256("ticket_3");
+        ticketSecretHashes[4] = keccak256("ticket_4");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 5e18;
+        prizeValues[1] = 3e18;
+        prizeValues[2] = 2e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 10e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Only commit 2 out of 5 tickets
+        vm.prank(address(0x1));
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        vm.prank(address(0x2));
+        factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify only committed tickets have prizes
+        (,,, uint256 prize0) = factory.tickets(lotteryId, 0);
+        (,,, uint256 prize1) = factory.tickets(lotteryId, 1);
+        (,,, uint256 prize2) = factory.tickets(lotteryId, 2);
+        (,,, uint256 prize3) = factory.tickets(lotteryId, 3);
+        (,,, uint256 prize4) = factory.tickets(lotteryId, 4);
+
+        // Uncommitted tickets should have 0 prize
+        assertEq(prize1, 0, "Uncommitted ticket 1 should have 0 prize");
+        assertEq(prize3, 0, "Uncommitted ticket 3 should have 0 prize");
+        assertEq(prize4, 0, "Uncommitted ticket 4 should have 0 prize");
+
+        // With 3 prizes and 2 committed tickets, one prize goes to rollover
+        uint256 totalAssigned = prize0 + prize2;
+        uint256 rollover = factory.lotteryRolloverPool(lotteryId);
+
+        assertEq(totalAssigned + rollover, 10e18, "Total assigned + rollover should equal prize pool");
+        assertEq(rollover, 2e18, "One prize should go to rollover");
+
+        // Claim the winning tickets
+        vm.txGasPrice(10 gwei);
+
+        if (prize0 > 0) {
+            vm.prank(address(0x1));
+            factory.claimPrize(lotteryId, 0, "ticket_0");
+        }
+
+        if (prize2 > 0) {
+            vm.prank(address(0x2));
+            factory.claimPrize(lotteryId, 2, "ticket_2");
+        }
+
+        // Finalize and verify rollover
+        vm.warp(revealTime + 24 hours + 1);
+        factory.finalizeLottery(lotteryId);
+
+        uint256 finalRollover = factory.lotteryRolloverPool(lotteryId);
+        assertEq(finalRollover, 2e18, "Rollover should remain 2 ETH");
+    }
+
+    /**
+     * @notice Test rollover integration with new lottery
+     */
+    function test_Integration_RolloverIntegration() public {
+        // Create first lottery with partial commitment
+        bytes32 commitment1 = keccak256("secret1");
+
+        bytes32[] memory tickets1 = new bytes32[](3);
+        tickets1[0] = keccak256("ticket1_0");
+        tickets1[1] = keccak256("ticket1_1");
+        tickets1[2] = keccak256("ticket1_2");
+
+        uint256[] memory prizes1 = new uint256[](2);
+        prizes1[0] = 5e18;
+        prizes1[1] = 3e18;
+
+        uint256 lottery1 = factory.createLottery{value: 8e18}(
+            commitment1, tickets1, prizes1, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+        );
+
+        // Only commit 1 ticket
+        vm.prank(address(0x1));
+        factory.commitTicket(lottery1, 0, tickets1[0]);
+
+        // Close and reveal
+        vm.warp(block.timestamp + 1 hours + 1);
+        factory.closeCommitPeriod(lottery1);
+        vm.warp(block.timestamp + 1 hours);
+        factory.revealLottery(lottery1, "secret1");
+
+        // Verify rollover exists
+        uint256 rollover1 = factory.lotteryRolloverPool(lottery1);
+        assertGt(rollover1, 0, "Should have rollover from first lottery");
+
+        // Create second lottery using rollover
+        bytes32 commitment2 = keccak256("secret2");
+
+        bytes32[] memory tickets2 = new bytes32[](2);
+        tickets2[0] = keccak256("ticket2_0");
+        tickets2[1] = keccak256("ticket2_1");
+
+        uint256[] memory prizes2 = new uint256[](2);
+        prizes2[0] = 4e18;
+        prizes2[1] = 2e18;
+
+        uint256 expectedTotal = 6e18 + rollover1;
+
+        uint256 lottery2 = factory.createLottery{value: 6e18}(
+            commitment2, tickets2, prizes2, block.timestamp + 1 hours, block.timestamp + 2 hours, lottery1
+        );
+
+        // Verify rollover was added to prize pool
+        (uint256 totalPrize,) = factory.getLotteryPrizes(lottery2);
+        assertEq(totalPrize, expectedTotal, "Total prize should include rollover");
+
+        // Verify rollover pool was cleared
+        assertEq(factory.lotteryRolloverPool(lottery1), 0, "Rollover pool should be cleared");
+    }
+
+    /**
+     * @notice Test unclaimed prizes going to rollover after claim deadline
+     */
+    function test_Integration_UnclaimedPrizesRollover() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 10e18;
+        prizeValues[1] = 5e18;
+        prizeValues[2] = 2e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 17e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit all tickets
+        vm.prank(address(0x1));
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        vm.prank(address(0x2));
+        factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
+
+        vm.prank(address(0x3));
+        factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
+
+        // Close and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Only claim one prize
+        vm.txGasPrice(10 gwei);
+        for (uint256 i = 0; i < 3; i++) {
+            (address holder,, bool redeemed, uint256 prize) = factory.tickets(lotteryId, i);
+            if (prize > 0 && i == 0) {
+                // Only claim first winning ticket
+                vm.prank(holder);
+                factory.claimPrize(lotteryId, i, abi.encodePacked("ticket_", vm.toString(i)));
+                break;
+            }
+        }
+
+        // Warp past claim deadline
+        vm.warp(revealTime + 24 hours + 1);
+
+        // Finalize lottery
+        factory.finalizeLottery(lotteryId);
+
+        // Verify unclaimed prizes went to rollover
+        uint256 rollover = factory.lotteryRolloverPool(lotteryId);
+        assertGt(rollover, 0, "Unclaimed prizes should go to rollover");
 
         // Verify state is Finalized
         (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);

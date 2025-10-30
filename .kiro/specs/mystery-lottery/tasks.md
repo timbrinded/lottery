@@ -282,9 +282,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Write tests for successful refund and edge cases
     - _Requirements: 4.11, 9.7_
 
-- [ ]\* 10. Complete smart contract test coverage
+- [x] 10. Complete smart contract test coverage
 
-  - [x]\* 10.1 Unit tests for lottery creation
+  - [x] 10.1 Unit tests for lottery creation
 
     - ✅ Valid lottery creation with all validations
     - ✅ Invalid prize distributions (fuzz testing)
@@ -294,7 +294,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ 100+ test cases covering all scenarios
     - _Requirements: 1.1-1.8_
 
-  - [x]\* 10.2 Unit tests for commit phase
+  - [x] 10.2 Unit tests for commit phase
 
     - ✅ Successful commits with time manipulation
     - ✅ Commits after deadline
@@ -303,7 +303,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Close commit period state transition
     - _Requirements: 3.1-3.8_
 
-  - [x]\* 10.3 Unit tests for reveal and prize assignment
+  - [x] 10.3 Unit tests for reveal and prize assignment
 
     - ✅ Reveal with correct/incorrect secret
     - ✅ Prize cascade for uncommitted tickets
@@ -312,7 +312,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Full/partial/no commitment scenarios
     - _Requirements: 4.1-4.12_
 
-  - [ ]\* 10.4 Unit tests for claim phase
+  - [x] 10.4 Unit tests for claim phase
 
     - Test successful claims with gasless mechanism
     - Test gas cost calculation and deduction
@@ -324,7 +324,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Use vm.expectEmit for PrizeClaimed event
     - _Requirements: 5.1-5.12_
 
-  - [ ]\* 10.5 Integration tests for full lifecycle
+  - [x] 10.5 Integration tests for full lifecycle
     - Test complete lottery flow: create → commit → reveal → claim → finalize
     - Test multiple participants using vm.startPrank/vm.stopPrank
     - Test partial commitment with forfeiture
