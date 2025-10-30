@@ -372,16 +372,16 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Test routing with TanStack Router DevTools
     - _Requirements: General navigation_
 
-- [ ] 12. Implement lottery creation UI
+- [x] 12. Implement lottery creation UI
 
-  - [ ] 12.1 Install shadcn/ui components
+  - [x] 12.1 Install shadcn/ui components
 
     - Run: `cd fe && bunx shadcn@latest add button input label card alert`
     - Run: `bunx shadcn@latest add form select textarea badge`
     - Verify components added to fe/src/components/ui/
     - _Requirements: 1.1, 2.1_
 
-  - [ ] 12.2 Create crypto utilities in fe/src/lib/crypto.ts
+  - [x] 12.2 Create crypto utilities in fe/src/lib/crypto.ts
 
     - Import keccak256 from viem: `import { keccak256, toBytes, toHex } from 'viem'`
     - Create generateSecret(): string - uses crypto.randomBytes(32)
@@ -390,7 +390,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Export all functions for use in components
     - _Requirements: 1.2, 1.3, 1.4, 1.5_
 
-  - [ ] 12.3 Create CreateLotteryForm component
+  - [x] 12.3 Create CreateLotteryForm component
 
     - Create fe/src/components/lottery/CreateLotteryForm.tsx
     - Use shadcn Form with react-hook-form for validation
@@ -401,7 +401,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Display total ETH required for prize pool
     - _Requirements: 1.1, 2.1_
 
-  - [ ] 12.4 Create useCreateLottery hook
+  - [x] 12.4 Create useCreateLottery hook
 
     - Create fe/src/hooks/useCreateLottery.ts
     - Generate creator secret and commitment hash
@@ -412,7 +412,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Return: { lotteryId, creatorSecret, ticketSecrets, isLoading, error }
     - _Requirements: 1.6, 1.7, 11.6_
 
-  - [ ] 12.5 Build ticket distribution UI
+  - [x] 12.5 Build ticket distribution UI
     - Create fe/src/components/lottery/TicketDistribution.tsx
     - Display creator secret in Alert with "⚠️ SAVE THIS SECRET!" warning
     - Generate redemption URLs: `/ticket?lottery=${id}&ticket=${idx}&secret=${secret}`
