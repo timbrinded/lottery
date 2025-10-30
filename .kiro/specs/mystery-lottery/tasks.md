@@ -333,9 +333,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Use Foundry's invariant testing for edge cases
     - _Requirements: All_
 
-- [ ] 11. Set up frontend Web3 integration
+- [x] 11. Set up frontend Web3 integration
 
-  - [ ] 11.1 Install Web3 dependencies
+  - [x] 11.1 Install Web3 dependencies
 
     - Run: `cd fe && bun add wagmi viem @tanstack/react-query`
     - Run: `bun add @rainbow-me/rainbowkit` (wallet connection UI)
@@ -343,7 +343,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Verify installations in fe/package.json
     - _Requirements: 11.2_
 
-  - [ ] 11.2 Configure Arc blockchain connection
+  - [x] 11.2 Configure Arc blockchain connection
 
     - Create fe/src/lib/wagmi.ts with Arc chain configuration
     - Define Arc testnet chain: { id, name, rpcUrls, blockExplorers, nativeCurrency }
@@ -353,7 +353,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Test wallet connection with MetaMask/WalletConnect
     - _Requirements: 11.3, 11.4_
 
-  - [ ] 11.3 Generate contract types and ABIs
+  - [x] 11.3 Generate contract types and ABIs
 
     - Run: `cd contract && forge build` to compile contracts
     - Copy contract/out/LotteryFactory.sol/LotteryFactory.json to fe/src/contracts/
@@ -363,7 +363,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Export typed contract hooks for use in components
     - _Requirements: 11.2_
 
-  - [ ] 11.4 Set up TanStack Router routes
+  - [x] 11.4 Set up TanStack Router routes
     - Create fe/src/routes/create.tsx (lottery creation page)
     - Create fe/src/routes/ticket.tsx (ticket redemption with query params)
     - Create fe/src/routes/dashboard.tsx (creator dashboard)

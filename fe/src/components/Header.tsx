@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 import { useState } from 'react'
-import { Home, Menu, X } from 'lucide-react'
+import { Home, Menu, X, Plus, LayoutDashboard, Ticket } from 'lucide-react'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -16,12 +17,15 @@ export default function Header() {
         >
           <Menu size={24} />
         </button>
-        <h1 className="ml-4 text-xl font-semibold">
+        <h1 className="ml-4 text-xl font-semibold flex-1">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <span className="text-2xl">🎁</span>
             <span>Mystery Lottery</span>
           </Link>
         </h1>
+        <div className="mr-4">
+          <ConnectButton />
+        </div>
       </header>
 
       <aside
@@ -54,9 +58,44 @@ export default function Header() {
             <span className="font-medium">Home</span>
           </Link>
 
-          {/* Demo Links Start */}
+          <Link
+            to="/create"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Plus size={20} />
+            <span className="font-medium">Create Lottery</span>
+          </Link>
 
-          {/* Demo Links End */}
+          <Link
+            to="/dashboard"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <LayoutDashboard size={20} />
+            <span className="font-medium">My Lotteries</span>
+          </Link>
+
+          <Link
+            to="/ticket"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Ticket size={20} />
+            <span className="font-medium">Redeem Ticket</span>
+          </Link>
         </nav>
       </aside>
     </>

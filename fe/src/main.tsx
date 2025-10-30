@@ -1,12 +1,31 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { WagmiProvider } from 'wagmi'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
+// Import wagmi config
+import { config } from './lib/wagmi'
+
+// Import RainbowKit styles
+import '@rainbow-me/rainbowkit/styles.css'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
+
+// Create a query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 // Create a new router instance
 const router = createRouter({
@@ -31,7 +50,13 @@ if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider>
+            <RouterProvider router={router} />
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
     </StrictMode>,
   )
 }
