@@ -1,20 +1,27 @@
 import { useReadContract, useWriteContract, useWatchContractEvent } from 'wagmi'
 import { LOTTERY_FACTORY_ABI } from './LotteryFactory'
-import { getLotteryFactoryAddress, LOTTERY_FACTORY_ADDRESS } from './config'
+import { LOTTERY_FACTORY_ADDRESS, LOTTERY_FACTORY_ADDRESSES } from './config'
 import { useChainId } from 'wagmi'
 
 /**
  * Hook to get the LotteryFactory contract address for the current chain
+ * Returns null if contract is not deployed on the current chain
  */
-export function useLotteryFactoryAddress() {
+export function useLotteryFactoryAddress(): `0x${string}` | null {
   const chainId = useChainId()
   
-  // Use environment variable if available, otherwise use chain-specific address
+  // Use environment variable if available
   if (LOTTERY_FACTORY_ADDRESS) {
     return LOTTERY_FACTORY_ADDRESS
   }
   
-  return getLotteryFactoryAddress(chainId)
+  // Check if contract is deployed on this chain
+  const address = LOTTERY_FACTORY_ADDRESSES[chainId]
+  if (!address || address === '0x0000000000000000000000000000000000000000') {
+    return null
+  }
+  
+  return address
 }
 
 /**
@@ -31,10 +38,14 @@ export function useReadLotteryFactory<
   const address = useLotteryFactoryAddress()
   
   return useReadContract({
-    address,
+    address: (address || '0x0000000000000000000000000000000000000000') as `0x${string}`,
     abi: LOTTERY_FACTORY_ABI,
     functionName,
     args,
+    query: {
+      enabled: address !== null,
+      ...options?.query,
+    },
     ...options,
   })
 }
@@ -78,6 +89,11 @@ export function useWatchLotteryFactoryEvent<TEventName extends string>(
   options?: Parameters<typeof useWatchContractEvent>[0]
 ) {
   const address = useLotteryFactoryAddress()
+  
+  // Only watch events if contract is deployed
+  if (!address) {
+    return
+  }
   
   return useWatchContractEvent({
     address,

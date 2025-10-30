@@ -166,7 +166,7 @@ export function useRevealLottery({
 
       // Call revealLottery on the contract
       writeContract({
-        address,
+        address: address as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI,
         functionName: 'revealLottery',
         args: [lotteryId, secretBytes],

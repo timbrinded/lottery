@@ -95,7 +95,7 @@ export function useCommitTicket({
 
       // Call commitTicket on the contract
       writeContract({
-        address,
+        address: address as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI,
         functionName: 'commitTicket',
         args: [lotteryId, BigInt(ticketIndex), secretHash],

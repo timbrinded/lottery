@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useAccount, useBlockNumber } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useState, useEffect, useMemo } from 'react'
-import { useReadLotteryFactory, useWatchLotteryFactoryEvent } from '@/contracts/hooks'
+import { useReadLotteryFactory, useWatchLotteryFactoryEvent, useLotteryFactoryAddress } from '@/contracts/hooks'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Countdown } from '@/components/shared/Countdown'
 import { useCloseCommitPeriod } from '@/hooks/useCloseCommitPeriod'
 import { useRevealLottery } from '@/hooks/useRevealLottery'
 import { RevealLotteryModal } from '@/components/lottery/RevealLotteryModal'
+import { ContractNotDeployed } from '@/components/ContractNotDeployed'
 import { formatEther } from 'viem'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
@@ -36,6 +37,7 @@ interface LotteryData {
 
 function DashboardPage() {
   const { address, isConnected } = useAccount()
+  const contractAddress = useLotteryFactoryAddress()
   const [lotteries, setLotteries] = useState<LotteryData[]>([])
   const [filter, setFilter] = useState<'all' | 'active' | 'pending-reveal' | 'waiting-randomness' | 'revealed' | 'finalized'>('all')
   const [isLoading, setIsLoading] = useState(true)
@@ -129,6 +131,11 @@ function DashboardPage() {
       }
     })
   }, [lotteries, filter])
+
+  // Check if contract is deployed (after all hooks)
+  if (!contractAddress) {
+    return <ContractNotDeployed />
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

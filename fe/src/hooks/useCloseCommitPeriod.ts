@@ -99,7 +99,7 @@ export function useCloseCommitPeriod({
     try {
       // Call closeCommitPeriod on the contract
       writeContract({
-        address,
+        address: address as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI,
         functionName: 'closeCommitPeriod',
         args: [lotteryId],
