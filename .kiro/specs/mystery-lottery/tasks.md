@@ -699,3 +699,73 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Monitor transaction success rates
     - Track user flows and errors
     - _Requirements: General quality_
+
+---
+
+## Critical Fix: Randomness Implementation
+
+**Issue Identified:** The current implementation uses `block.prevrandao` for randomness, but the design document explicitly states that Arc blockchain doesn't support RANDAO (always returns 0). The design specifies using future block hash with a `randomnessBlock` mechanism to prevent creator grinding attacks.
+
+- [x] 21. Fix randomness generation to match design specification
+
+  - [x] 21.1 Update closeCommitPeriod function implementation
+
+    - Modify `closeCommitPeriod` to set `randomnessBlock = block.number + K` (where K = 10-50 blocks)
+    - Add event emission: `CommitPeriodClosed(lotteryId, randomnessBlock)`
+    - Update tests to verify randomnessBlock is set correctly
+    - Test that closeCommitPeriod can only be called after commit deadline
+    - Test that closeCommitPeriod transitions state from CommitOpen to CommitClosed
+    - _Requirements: 4.6, 10.2_
+
+  - [x] 21.2 Update revealLottery to use future block hash
+
+    - Replace `block.prevrandao` with `blockhash(lottery.randomnessBlock)`
+    - Add validation: `require(block.number >= lottery.randomnessBlock, "Randomness block not reached")`
+    - Add validation: `require(block.number <= lottery.randomnessBlock + 256, "Blockhash expired")`
+    - Add validation: `require(blockEntropy != bytes32(0), "Blockhash unavailable")`
+    - Update random seed generation: `keccak256(abi.encodePacked(_creatorSecret, blockEntropy))`
+    - Add custom errors: `RandomnessBlockNotReached`, `BlockhashExpired`, `BlockhashUnavailable`
+    - _Requirements: 4.6, 10.1, 10.2_
+
+  - [x] 21.3 Add randomnessBlock field to Lottery struct
+
+    - Verify `randomnessBlock` field exists in Lottery struct (should already be there from design)
+    - If missing, add: `uint256 randomnessBlock; // Block number for entropy source`
+    - Initialize to 0 in createLottery function
+    - _Requirements: 4.6_
+
+  - [x] 21.4 Update view functions for randomness status
+
+    - Update `isRevealReady` to check: `state == CommitClosed && block.number >= lottery.randomnessBlock`
+    - Add getter function: `getRandomnessBlock(uint256 lotteryId) returns (uint256)`
+    - Add helper function: `canRevealNow(uint256 lotteryId) returns (bool, string memory reason)`
+    - Return reasons: "Commit period not closed", "Randomness block not reached", "Blockhash expired", "Ready to reveal"
+    - _Requirements: 4.6_
+
+  - [x] 21.5 Comprehensive testing for randomness mechanism
+
+    - Test closeCommitPeriod sets randomnessBlock correctly (block.number + K)
+    - Test revealLottery reverts if block.number < randomnessBlock
+    - Test revealLottery reverts if block.number > randomnessBlock + 256
+    - Test revealLottery succeeds when randomnessBlock <= block.number <= randomnessBlock + 256
+    - Test that different block hashes produce different random seeds
+    - Test that same creator secret + same block hash = same seed (deterministic)
+    - Use vm.roll() to manipulate block numbers in tests
+    - Use vm.prevrandao() to set block hash for testing (if needed)
+    - _Requirements: 4.6, 10.1, 10.2_
+
+  - [x] 21.6 Update integration tests for full lifecycle with randomness
+
+    - Test complete flow: create → commit → closeCommitPeriod → wait for randomnessBlock → reveal → claim
+    - Test scenario where creator tries to reveal too early (before randomnessBlock)
+    - Test scenario where creator waits too long (after 256 blocks)
+    - Test multiple lotteries with different randomness blocks
+    - Verify prize assignments are different with different block hashes
+    - _Requirements: 10.5_
+
+  - [x] 21.7 Update design documentation if needed
+    - Review design.md to ensure randomness section is accurate
+    - Add note about K value (number of blocks to wait) - recommend 20 blocks (~4 minutes on 12s blocks)
+    - Document the 256-block window limitation for blockhash availability
+    - Add warning about refund mechanism if creator misses the reveal window
+    - _Requirements: Documentation_
