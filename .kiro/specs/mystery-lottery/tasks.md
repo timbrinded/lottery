@@ -421,9 +421,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Add "Download All" button to export JSON with all ticket data
     - _Requirements: 1.8, 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 13. Implement ticket commit UI
+- [x] 13. Implement ticket commit UI
 
-  - [ ] 13.1 Create ticket redemption page
+  - [x] 13.1 Create ticket redemption page
 
     - Create fe/src/routes/ticket.tsx with TanStack Router
     - Use useSearch() to parse query params: { lottery, ticket, secret }
@@ -434,7 +434,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Handle invalid/missing query params gracefully
     - _Requirements: 2.6, 3.2_
 
-  - [ ] 13.2 Create useCommitTicket hook
+  - [x] 13.2 Create useCommitTicket hook
 
     - Create fe/src/hooks/useCommitTicket.ts
     - Import hashSecret from crypto utilities
@@ -445,7 +445,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Handle errors: CommitDeadlinePassed, TicketAlreadyCommitted, InvalidTicketSecret
     - _Requirements: 3.3, 3.4, 3.5, 3.6, 11.6_
 
-  - [ ] 13.3 Create TicketCommit component
+  - [x] 13.3 Create TicketCommit component
 
     - Create fe/src/components/ticket/TicketCommit.tsx
     - Show "Enter Draw" button that calls useCommitTicket
@@ -458,7 +458,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 - [ ] 14. Implement reveal UI for creators
 
-  - [ ] 13.4 Create useCloseCommitPeriod hook
+  - [x] 13.4 Create useCloseCommitPeriod hook
 
     - Create fe/src/hooks/useCloseCommitPeriod.ts
     - Use wagmi's useWriteContract to call closeCommitPeriod(lotteryId)
