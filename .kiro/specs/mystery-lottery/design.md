@@ -46,14 +46,17 @@ The Mystery Lottery system is a decentralized lottery platform on Arc blockchain
 Each lottery progresses through distinct states:
 
 ```
-Pending → CommitOpen → CommitClosed → RevealOpen → Finalized
+Pending → CommitOpen → CommitClosed → RevealReady → RevealOpen → Finalized
 ```
 
 **State Transitions:**
 - `Pending → CommitOpen`: Lottery created, commit period begins
-- `CommitOpen → CommitClosed`: Commit deadline passes
-- `CommitClosed → RevealOpen`: Creator reveals secret, prizes assigned
+- `CommitOpen → CommitClosed`: Commit deadline passes, randomnessBlock set
+- `CommitClosed → RevealReady`: Randomness block arrives (block.number >= randomnessBlock)
+- `RevealReady → RevealOpen`: Creator reveals secret, prizes assigned
 - `RevealOpen → Finalized`: Claim deadline passes, forfeited prizes processed
+
+**Note:** RevealReady is a computed state (not stored), determined by checking if `block.number >= lottery.randomnessBlock`
 
 ## Components and Interfaces
 
@@ -77,6 +80,7 @@ struct Lottery {
     uint256[] prizeValues; // In native USDC (6 decimals)
     bytes32[] ticketSecretHashes;
     uint256 commitDeadline;
+    uint256 randomnessBlock; // Block number for entropy source (set when commit closes)
     uint256 revealTime;
     uint256 claimDeadline;
     uint256 randomSeed;
@@ -124,6 +128,13 @@ function commitTicketSponsored(
     uint256 _lotteryId,
     uint256 _ticketIndex,
     bytes32 _ticketSecretHash
+) external
+```
+
+**Commit Close Phase:**
+```solidity
+function closeCommitPeriod(
+    uint256 _lotteryId
 ) external
 ```
 
@@ -269,6 +280,9 @@ interface PrizeAssignment {
 ```solidity
 error CommitDeadlinePassed();
 error CommitPeriodNotClosed();
+error RandomnessBlockNotReached();
+error BlockhashExpired();
+error BlockhashUnavailable();
 error InvalidCreatorSecret();
 error TicketNotCommitted();
 error TicketAlreadyRedeemed();
@@ -426,20 +440,85 @@ function commitTicketSponsored(uint256 lotteryId, uint256 ticketIndex, bytes32 t
 
 ### Randomness
 
-**Approach:** Combine creator secret + block hash
+**Approach:** Combine creator secret + future block hash
 - Creator provides unpredictable secret (committed before distribution)
-- Block hash adds blockchain-level randomness
+- Future block hash (determined at commit deadline) adds blockchain-level randomness
 - Combined via keccak256 for final seed
+
+**Implementation Strategy:**
+1. When commit period closes, store `randomnessBlock = block.number + K` (K = 10-50 blocks)
+2. Creator must wait for `randomnessBlock` to arrive before revealing
+3. Use `blockhash(randomnessBlock)` which was unpredictable during commit phase
+4. This prevents creator from grinding/timing attacks
+
+**Detailed Flow:**
+
+```solidity
+// Step 1: Close commit period (anyone can call after deadline)
+function closeCommitPeriod(uint256 _lotteryId) external {
+    require(block.timestamp >= lottery.commitDeadline, "Commit period not ended");
+    require(lottery.state == LotteryState.CommitOpen, "Invalid state");
+    
+    // Set future block for randomness (10-50 blocks ahead)
+    lottery.randomnessBlock = block.number + 20; // ~4 minutes on 12s blocks
+    lottery.state = LotteryState.CommitClosed;
+    
+    emit CommitPeriodClosed(_lotteryId, lottery.randomnessBlock);
+}
+
+// Step 2: Reveal lottery (creator calls after randomnessBlock arrives)
+function revealLottery(uint256 _lotteryId, bytes calldata _creatorSecret) external {
+    require(msg.sender == lottery.creator, "Only creator");
+    require(lottery.state == LotteryState.CommitClosed, "Invalid state");
+    require(block.number >= lottery.randomnessBlock, "Randomness block not reached");
+    require(block.number <= lottery.randomnessBlock + 256, "Blockhash expired");
+    
+    // Verify creator secret
+    require(keccak256(_creatorSecret) == lottery.creatorCommitment, "Invalid secret");
+    
+    // Get future block hash (was unpredictable during commit phase)
+    bytes32 blockEntropy = blockhash(lottery.randomnessBlock);
+    require(blockEntropy != bytes32(0), "Blockhash unavailable");
+    
+    // Combine for final random seed
+    lottery.randomSeed = uint256(keccak256(abi.encodePacked(_creatorSecret, blockEntropy)));
+    
+    // Assign prizes
+    _assignPrizes(_lotteryId);
+    
+    lottery.state = LotteryState.RevealOpen;
+    lottery.claimDeadline = block.timestamp + 24 hours;
+    
+    emit LotteryRevealed(_lotteryId, lottery.randomSeed);
+}
+```
+
+**Why Future Block Hash?**
+- **Arc Limitation**: RANDAO always returns 0 on Arc blockchain
+- **Security**: Creator cannot predict future block hash during commit phase
+- **No Grinding**: Using `blockhash(block.number - 1)` would allow creator to:
+  1. Query current block hash before submitting reveal
+  2. Simulate prize outcomes off-chain
+  3. Only submit when outcomes are favorable
+  4. This is a "grinding attack" that breaks fairness
+- **Trade-off**: Adds 2-10 minute delay between commit close and reveal (acceptable, builds suspense)
 
 **Why not VRF?**
 - Cost: VRF costs $5-10 per request
 - Complexity: Requires oracle integration
-- Sufficient: Commit-reveal provides adequate randomness for this use case
+- Sufficient: Future block hash + commit-reveal provides adequate randomness for small-to-medium lotteries
 
 **Attack Vectors Mitigated:**
-- Creator manipulation: Can't know block hash at commit time
-- Miner manipulation: Creator secret prevents miner from gaming
-- Participant gaming: Must commit before reveal
+- Creator manipulation: Can't know future block hash at commit time ✅
+- Creator grinding: Can't simulate outcomes before reveal (block hash not yet available) ✅
+- Miner/validator manipulation: Creator secret prevents single-party control ✅
+- Participant gaming: Must commit before reveal ✅
+
+**Limitations:**
+- Requires waiting period (K blocks) after commit deadline before reveal
+- Blockhash only available for 256 blocks (must reveal within this window)
+- Not suitable for high-value lotteries (>$10k) - use VRF instead
+- Theoretically vulnerable to validator manipulation (but economically irrational)
 
 ### USDC Handling on Arc
 

@@ -1843,3 +1843,431 @@ contract MaliciousReentrancy {
         }
     }
 }
+
+// ============ RefundLottery Tests Contract Extension ============
+
+contract LotteryFactoryRefundTest is Test {
+    LotteryFactory public factory;
+
+    event LotteryRefunded(uint256 indexed lotteryId, address indexed creator, uint256 amount);
+
+    function setUp() public {
+        factory = new LotteryFactory();
+    }
+
+    // Receive function to accept ETH refunds
+    receive() external payable {}
+
+    /**
+     * @notice Test successful refund when creator fails to reveal
+     */
+    function test_RefundLottery_Success() public {
+        // Setup lottery
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+        ticketSecretHashes[1] = keccak256(abi.encodePacked("ticket_1"));
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 6e18;
+        prizeValues[1] = 4e18;
+
+        uint256 totalPrize = 10e18;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        address creator = address(this);
+        uint256 creatorBalanceBefore = creator.balance;
+
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit tickets
+        address user1 = address(0x1);
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Verify state is CommitClosed
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitClosed), "State should be CommitClosed");
+
+        // Warp past reveal time + 24 hours (refund window)
+        vm.warp(revealTime + 24 hours + 1);
+
+        // Call refund (can be called by anyone)
+        address refunder = address(0x999);
+        vm.prank(refunder);
+        factory.refundLottery(lotteryId);
+
+        // Verify state is Finalized
+        (,,,,,,, LotteryFactory.LotteryState finalState,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(finalState), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
+
+        // Verify creator received refund
+        uint256 creatorBalanceAfter = creator.balance;
+        assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive full refund");
+    }
+
+    /**
+     * @notice Test refund emits correct event
+     */
+    function test_RefundLottery_EmitsEvent() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 totalPrize = 5e18;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        address creator = address(this);
+
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Warp past refund window
+        vm.warp(revealTime + 24 hours + 1);
+
+        // Expect event emission
+        vm.expectEmit(true, true, false, true);
+        emit LotteryRefunded(lotteryId, creator, totalPrize);
+
+        factory.refundLottery(lotteryId);
+    }
+
+    /**
+     * @notice Test refund reverts if lottery is not in CommitClosed state
+     */
+    function test_RefundLottery_RevertsIfNotCommitClosed() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 5e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Try to refund while still in CommitOpen state
+        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
+        factory.refundLottery(lotteryId);
+    }
+
+    /**
+     * @notice Test refund reverts if called before 24 hours after reveal time
+     */
+    function test_RefundLottery_RevertsIfTooEarly() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 5e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Try to refund immediately after reveal time (before 24 hours)
+        vm.warp(revealTime);
+        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
+        factory.refundLottery(lotteryId);
+
+        // Try to refund 23 hours after reveal time (still too early)
+        vm.warp(revealTime + 23 hours);
+        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
+        factory.refundLottery(lotteryId);
+    }
+
+    /**
+     * @notice Test refund reverts if lottery was already revealed
+     */
+    function test_RefundLottery_RevertsIfAlreadyRevealed() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 5e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address user1 = address(0x1);
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Close commit period and reveal
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify state is RevealOpen
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "State should be RevealOpen");
+
+        // Try to refund after reveal - should revert
+        vm.warp(revealTime + 24 hours + 1);
+        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
+        factory.refundLottery(lotteryId);
+    }
+
+    /**
+     * @notice Test refund can be called by anyone (not just creator)
+     */
+    function test_RefundLottery_CanBeCalledByAnyone() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 totalPrize = 5e18;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        address creator = address(this);
+        uint256 creatorBalanceBefore = creator.balance;
+
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Warp past refund window
+        vm.warp(revealTime + 24 hours + 1);
+
+        // Call refund from random address (not creator)
+        address randomCaller = address(0x888);
+        vm.prank(randomCaller);
+        factory.refundLottery(lotteryId);
+
+        // Verify creator still received refund
+        uint256 creatorBalanceAfter = creator.balance;
+        assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive refund even when called by others");
+    }
+
+    /**
+     * @notice Test refund with multiple committed tickets
+     */
+    function test_RefundLottery_WithMultipleCommittedTickets() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+        ticketSecretHashes[1] = keccak256(abi.encodePacked("ticket_1"));
+        ticketSecretHashes[2] = keccak256(abi.encodePacked("ticket_2"));
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 5e18;
+        prizeValues[1] = 3e18;
+        prizeValues[2] = 2e18;
+
+        uint256 totalPrize = 10e18;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        address creator = address(this);
+        uint256 creatorBalanceBefore = creator.balance;
+
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit all tickets
+        address user1 = address(0x1);
+        vm.prank(user1);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        address user2 = address(0x2);
+        vm.prank(user2);
+        factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
+
+        address user3 = address(0x3);
+        vm.prank(user3);
+        factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Warp past refund window
+        vm.warp(revealTime + 24 hours + 1);
+
+        // Refund lottery
+        factory.refundLottery(lotteryId);
+
+        // Verify creator received full refund
+        uint256 creatorBalanceAfter = creator.balance;
+        assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive full refund");
+
+        // Verify state is Finalized
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
+    }
+
+    /**
+     * @notice Test refund at exact 24 hour boundary
+     */
+    function test_RefundLottery_AtExact24HourBoundary() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 5e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Warp to exactly 24 hours after reveal time (should still revert - needs to be AFTER)
+        vm.warp(revealTime + 24 hours);
+        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
+        factory.refundLottery(lotteryId);
+
+        // Warp to 1 second after 24 hours (should succeed)
+        vm.warp(revealTime + 24 hours + 1);
+        factory.refundLottery(lotteryId);
+
+        // Verify state is Finalized
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
+    }
+
+    /**
+     * @notice Test refund reverts if lottery is already finalized
+     */
+    function test_RefundLottery_RevertsIfAlreadyFinalized() public {
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        uint256 lotteryId = factory.createLottery{value: 5e18}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Warp past refund window and refund
+        vm.warp(revealTime + 24 hours + 1);
+        factory.refundLottery(lotteryId);
+
+        // Try to refund again - should revert
+        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
+        factory.refundLottery(lotteryId);
+    }
+
+    /**
+     * @notice Fuzz test refund with various time delays
+     */
+    function testFuzz_RefundLottery_VariousTimeDelays(uint256 timeDelay) public {
+        // Bound time delay to reasonable range (24 hours + 1 second to 365 days)
+        timeDelay = bound(timeDelay, 24 hours + 1, 365 days);
+
+        bytes memory creatorSecret = "my_secret_123";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256(abi.encodePacked("ticket_0"));
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 5e18;
+
+        uint256 totalPrize = 5e18;
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours;
+
+        address creator = address(this);
+        uint256 creatorBalanceBefore = creator.balance;
+
+        uint256 lotteryId = factory.createLottery{value: totalPrize}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Close commit period
+        vm.warp(commitDeadline + 1);
+        factory.closeCommitPeriod(lotteryId);
+
+        // Warp by fuzzed time delay
+        vm.warp(revealTime + timeDelay);
+
+        // Refund should succeed
+        factory.refundLottery(lotteryId);
+
+        // Verify creator received refund
+        uint256 creatorBalanceAfter = creator.balance;
+        assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive full refund");
+
+        // Verify state is Finalized
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
+    }
+}

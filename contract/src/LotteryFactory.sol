@@ -188,6 +188,14 @@ contract LotteryFactory is ReentrancyGuard {
      */
     event PrizesForfeited(uint256 indexed lotteryId, uint256 forfeitedAmount, uint256 processedAt);
 
+    /**
+     * @notice Emitted when a lottery is refunded due to failed reveal
+     * @param lotteryId Lottery identifier
+     * @param creator Address receiving the refund
+     * @param amount Total amount refunded
+     */
+    event LotteryRefunded(uint256 indexed lotteryId, address indexed creator, uint256 amount);
+
     // ============ Constructor ============
 
     constructor() {
@@ -610,6 +618,39 @@ contract LotteryFactory is ReentrancyGuard {
 
         // Emit event with total forfeited amount
         emit PrizesForfeited(_lotteryId, totalForfeited, block.timestamp);
+    }
+
+    /**
+     * @notice Refund lottery prize pool to creator if reveal fails
+     * @dev Can be called by anyone if creator fails to reveal within 24 hours of reveal time
+     * @param _lotteryId The lottery identifier
+     */
+    function refundLottery(uint256 _lotteryId) external {
+        Lottery storage lottery = lotteries[_lotteryId];
+
+        // Verify lottery is in CommitClosed state (not revealed)
+        if (lottery.state != LotteryState.CommitClosed) {
+            revert InvalidLotteryState();
+        }
+
+        // Verify 24 hours have passed since reveal time (strictly greater than)
+        if (block.timestamp <= lottery.revealTime + 24 hours) {
+            revert CommitPeriodNotClosed();
+        }
+
+        // Get total prize pool to refund
+        uint256 refundAmount = lottery.totalPrizePool;
+        address creator = lottery.creator;
+
+        // Transition lottery state to Finalized
+        lottery.state = LotteryState.Finalized;
+
+        // Transfer total prize pool back to creator
+        (bool success,) = payable(creator).call{value: refundAmount}("");
+        require(success, "Refund transfer failed");
+
+        // Emit event
+        emit LotteryRefunded(_lotteryId, creator, refundAmount);
     }
 
     // ============ Internal Functions ============

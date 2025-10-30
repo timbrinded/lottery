@@ -19,8 +19,8 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 **Custom Implementation Required:**
 
 - Commit-reveal pattern (no standard library available)
-- Fisher-Yates shuffle algorithm (no audited on-chain implementation)
-- Time-based state machine (use Solidity primitives: block.timestamp)
+- Future block hash randomness (Arc doesn't support RANDAO)
+- Time-based state machine (use Solidity primitives: block.timestamp, block.number)
 - Prize cascade logic (protocol-specific)
 
 **Why Solady over OpenZeppelin?**
@@ -69,6 +69,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
     - ✅ Create enum with states: Pending, CommitOpen, CommitClosed, RevealOpen, Finalized
     - ✅ Define Lottery struct with all required fields (creator, commitments, deadlines, prizes)
+    - ✅ Add randomnessBlock field to store future block number for entropy
     - ✅ Implement TicketCommitment struct for tracking ticket state
     - ✅ Add sponsoredGasPool and sponsoredGasUsed fields for optional gas sponsorship
     - _Requirements: 1.1, 3.1, 4.1_
@@ -86,7 +87,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
   - [x] 3.1 Define custom errors and events
 
     - ✅ Create custom error types for gas efficiency (InvalidPrizeSum, InvalidDeadlines, etc.)
+    - ✅ Add randomness-related errors: RandomnessBlockNotReached, BlockhashExpired, BlockhashUnavailable
     - ✅ Define LotteryCreated event with all lottery parameters
+    - ✅ Define CommitPeriodClosed event with randomnessBlock
     - ✅ Define TicketCommitted, LotteryRevealed, PrizeClaimed, PrizesForfeited events
     - _Requirements: 1.7, 3.6, 4.10, 5.10, 6.6_
 
@@ -133,6 +136,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Check block.timestamp against commitDeadline in commitTicket
     - ✅ Revert with CommitDeadlinePassed if deadline passed
     - ✅ Create closeCommitPeriod function (callable by anyone)
+    - ✅ Set randomnessBlock = block.number + K (K = 10-50 blocks) when closing commit period
     - ✅ Transition state to CommitClosed when deadline passes
     - ✅ Comprehensive tests for commit phase including edge cases
     - _Requirements: 3.4, 3.7, 3.8_
@@ -152,15 +156,20 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Verify secret matches stored commitment hash using keccak256
     - Check reveal time has arrived using block.timestamp
     - Verify state is CommitClosed
+    - Verify block.number >= lottery.randomnessBlock (future block has arrived)
+    - Verify block.number <= lottery.randomnessBlock + 256 (blockhash still available)
     - Note: No library needed - implement commit-reveal pattern manually
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-  - [x] 5.2 Implement randomness generation
+  - [x] 5.2 Implement randomness generation using future block hash
 
-    - Combine creator secret with block.prevrandao (or blockhash on older chains)
-    - Use keccak256 to generate random seed
+    - Retrieve blockhash(lottery.randomnessBlock) for entropy
+    - Verify blockhash is not zero (should never happen if within 256 blocks)
+    - Combine creator secret with future block hash: keccak256(abi.encodePacked(secret, blockHash))
     - Store random seed in lottery struct
-    - Note: No library needed - standard Solidity primitives
+    - Note: Arc blockchain doesn't support RANDAO (always 0), so we use future block hash
+    - Note: Future block hash prevents creator grinding attacks (can't predict during commit)
+    - Note: randomnessBlock was set K blocks in future during closeCommitPeriod
     - _Requirements: 4.6, 10.1, 10.2_
 
   - [x] 5.3 Implement prize-centric assignment (NO Fisher-Yates needed!)
@@ -261,9 +270,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Custom errors used for all validation failures
     - _Requirements: 9.4_
 
-- [ ] 9. Implement timeout and refund mechanism
+- [-] 9. Implement timeout and refund mechanism
 
-  - [ ] 9.1 Create refundLottery function for failed reveals
+  - [x] 9.1 Create refundLottery function for failed reveals
     - Create refundLottery(uint256 \_lotteryId) external function
     - Verify lottery is in CommitClosed state (not revealed)
     - Verify 24 hours have passed since revealTime
@@ -449,16 +458,28 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 - [ ] 14. Implement reveal UI for creators
 
+  - [ ] 13.4 Create useCloseCommitPeriod hook
+
+    - Create fe/src/hooks/useCloseCommitPeriod.ts
+    - Use wagmi's useWriteContract to call closeCommitPeriod(lotteryId)
+    - Check if block.timestamp >= lottery.commitDeadline
+    - Use useWaitForTransactionReceipt for confirmation
+    - Return: { closeCommit, isLoading, isSuccess, error }
+    - This can be called by anyone (not just creator) after commit deadline
+    - _Requirements: 3.7, 3.8_
+
   - [ ] 14.1 Create lottery dashboard
 
     - Create fe/src/routes/dashboard.tsx
     - Fetch all lotteries where creator === connected wallet address
     - Use event logs or iterate through lotteryCounter to find creator's lotteries
     - Display lotteries in grid using shadcn Card components
-    - Show: lottery ID, prize pool, state, commit/reveal/claim deadlines
+    - Show: lottery ID, prize pool, state, commit/reveal/claim deadlines, randomnessBlock
     - Add countdown timers for each deadline
-    - Show "Reveal Lottery" button when state === CommitClosed && now >= revealTime
-    - Filter by state: Active, Pending Reveal, Revealed, Finalized
+    - Show "Close Commit Period" button when state === CommitOpen && now >= commitDeadline
+    - Show "Reveal Lottery" button when state === CommitClosed && block.number >= randomnessBlock
+    - Show waiting message when CommitClosed but block.number < randomnessBlock (with block countdown)
+    - Filter by state: Active, Pending Reveal, Waiting for Randomness, Revealed, Finalized
     - _Requirements: 8.1, 8.2, 8.3_
 
   - [ ] 14.2 Create RevealLotteryModal component
@@ -475,11 +496,13 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
   - [ ] 14.3 Create useRevealLottery hook
     - Create fe/src/hooks/useRevealLottery.ts
+    - Check if block.number >= lottery.randomnessBlock before allowing reveal
     - Use wagmi's useWriteContract to call revealLottery(lotteryId, creatorSecret)
     - Convert secret string to bytes using toBytes from viem
     - Use useWaitForTransactionReceipt for confirmation
-    - Return: { reveal, isLoading, isSuccess, error }
-    - Handle errors: InvalidCreatorSecret, InvalidLotteryState, CommitPeriodNotClosed
+    - Return: { reveal, isLoading, isSuccess, error, canReveal, blocksRemaining }
+    - Handle errors: InvalidCreatorSecret, RandomnessBlockNotReached, BlockhashExpired
+    - Display countdown: "Randomness available in X blocks (~Y minutes)"
     - _Requirements: 4.4, 4.5, 11.6_
 
 - [ ] 15. Implement prize reveal and claim UI
@@ -544,6 +567,18 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Add color coding: green (>24h), yellow (6-24h), red (<6h)
     - _Requirements: 2.6, 3.2, 5.2, 6.9_
 
+  - [ ] 16.1b Create BlockCountdown component
+
+    - Create fe/src/components/shared/BlockCountdown.tsx
+    - Accept targetBlock (block number) as prop
+    - Use wagmi's useBlockNumber to get current block
+    - Calculate remaining blocks: targetBlock - currentBlock
+    - Estimate time: remainingBlocks \* 12 seconds (Arc block time)
+    - Display: "X blocks remaining (~Y minutes)"
+    - Show "Block reached!" when currentBlock >= targetBlock
+    - Add color coding: green (>10 blocks), yellow (5-10 blocks), red (<5 blocks)
+    - _Requirements: 4.6, 10.2_
+
   - [ ] 16.2 Add deadline warnings
 
     - Add Alert component to ticket.tsx when lottery.state === RevealOpen
@@ -571,6 +606,8 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Create fe/src/lib/errors.ts with error mapping
     - Map contract errors to user messages:
       - CommitDeadlinePassed → "Commit period has ended"
+      - RandomnessBlockNotReached → "Please wait for randomness block (X blocks remaining)"
+      - BlockhashExpired → "Reveal window expired, lottery can be refunded"
       - InvalidCreatorSecret → "Invalid creator secret"
       - TicketAlreadyRedeemed → "Prize already claimed"
     - Handle wagmi errors:
