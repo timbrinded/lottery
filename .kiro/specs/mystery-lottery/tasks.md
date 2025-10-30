@@ -456,7 +456,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Disable button if already committed or deadline passed
     - _Requirements: 3.6_
 
-- [ ] 14. Implement reveal UI for creators
+- [x] 14. Implement reveal UI for creators
 
   - [x] 13.4 Create useCloseCommitPeriod hook
 
@@ -468,7 +468,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - This can be called by anyone (not just creator) after commit deadline
     - _Requirements: 3.7, 3.8_
 
-  - [ ] 14.1 Create lottery dashboard
+  - [x] 14.1 Create lottery dashboard
 
     - Create fe/src/routes/dashboard.tsx
     - Fetch all lotteries where creator === connected wallet address
@@ -482,7 +482,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Filter by state: Active, Pending Reveal, Waiting for Randomness, Revealed, Finalized
     - _Requirements: 8.1, 8.2, 8.3_
 
-  - [ ] 14.2 Create RevealLotteryModal component
+  - [x] 14.2 Create RevealLotteryModal component
 
     - Run: `cd fe && bunx shadcn@latest add dialog`
     - Create fe/src/components/lottery/RevealLotteryModal.tsx
@@ -494,7 +494,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Show warning: "This action is irreversible and will assign prizes"
     - _Requirements: 4.2, 4.3_
 
-  - [ ] 14.3 Create useRevealLottery hook
+  - [x] 14.3 Create useRevealLottery hook
     - Create fe/src/hooks/useRevealLottery.ts
     - Check if block.number >= lottery.randomnessBlock before allowing reveal
     - Use wagmi's useWriteContract to call revealLottery(lotteryId, creatorSecret)
