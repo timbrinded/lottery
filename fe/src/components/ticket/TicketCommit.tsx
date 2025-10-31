@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocalStorage } from 'usehooks-ts';
 import { useCommitTicket } from '@/hooks/useCommitTicket';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -22,8 +23,14 @@ export function TicketCommit({
   revealTime,
   onCommitSuccess,
 }: TicketCommitProps) {
-  const [isAlreadyCommitted, setIsAlreadyCommitted] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Use useLocalStorage hook for commit status
+  const storageKey = `committed_${lotteryId}_${ticketIndex}`;
+  const [isAlreadyCommitted, setIsAlreadyCommitted] = useLocalStorage(
+    storageKey,
+    false
+  );
 
   const {
     commit,
@@ -39,25 +46,14 @@ export function TicketCommit({
     commitDeadline,
   });
 
-  // Check localStorage for previous commit
-  useEffect(() => {
-    const storageKey = `committed_${lotteryId}_${ticketIndex}`;
-    const committed = localStorage.getItem(storageKey);
-    if (committed === 'true') {
-      setIsAlreadyCommitted(true);
-    }
-  }, [lotteryId, ticketIndex]);
-
-  // Store commit status in localStorage on success
+  // Store commit status on success
   useEffect(() => {
     if (isSuccess) {
-      const storageKey = `committed_${lotteryId}_${ticketIndex}`;
-      localStorage.setItem(storageKey, 'true');
       setIsAlreadyCommitted(true);
       setShowSuccess(true);
       onCommitSuccess?.();
     }
-  }, [isSuccess, lotteryId, ticketIndex, onCommitSuccess]);
+  }, [isSuccess, setIsAlreadyCommitted, onCommitSuccess]);
 
   const now = Math.floor(Date.now() / 1000);
   const deadlinePassed = now >= commitDeadline;

@@ -46,6 +46,7 @@ class ErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
     })
+    // Use window.location.reload() for full page refresh (appropriate for error recovery)
     window.location.reload()
   }
 
@@ -55,6 +56,8 @@ class ErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
     })
+    // For class components, we use window.location for navigation
+    // Note: Could be refactored to functional component with useNavigate in the future
     window.location.href = '/'
   }
 

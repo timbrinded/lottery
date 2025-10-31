@@ -3,9 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Construction, ExternalLink } from 'lucide-react'
 import { useChainId } from 'wagmi'
+import { useNavigate } from '@tanstack/react-router'
 
 export function ContractNotDeployed() {
   const chainId = useChainId()
+  const navigate = useNavigate()
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -56,7 +58,7 @@ export function ContractNotDeployed() {
           </div>
 
           <div className="flex justify-center">
-            <Button onClick={() => (window.location.href = '/')} variant="outline">
+            <Button onClick={() => navigate({ to: '/' })} variant="outline">
               Go Back Home
             </Button>
           </div>
