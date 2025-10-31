@@ -505,9 +505,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Display countdown: "Randomness available in X blocks (~Y minutes)"
     - _Requirements: 4.4, 4.5, 11.6_
 
-- [ ] 15. Implement prize reveal and claim UI
+- [x] 15. Implement prize reveal and claim UI
 
-  - [ ] 15.1 Create prize checking UI
+  - [x] 15.1 Create prize checking UI
 
     - Update fe/src/routes/ticket.tsx to show "Step 2: Check & Claim!"
     - Display when lottery.state === RevealOpen
@@ -518,7 +518,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Display prize amount in ETH with formatEther from viem
     - _Requirements: 5.2, 5.3, 7.1_
 
-  - [ ] 15.2 Create PrizeAnimation component
+  - [x] 15.2 Create PrizeAnimation component
 
     - Create fe/src/components/ticket/PrizeAnimation.tsx
     - Accept prizeAmount as prop
@@ -529,7 +529,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Use tw-animate-css for animations (bounce, fade, pulse)
     - _Requirements: 5.3, 5.4, 5.5, 7.2, 7.3, 7.4_
 
-  - [ ] 15.3 Create useClaimPrize hook
+  - [x] 15.3 Create useClaimPrize hook
 
     - Create fe/src/hooks/useClaimPrize.ts
     - Fetch grossPrize from tickets[lotteryId][ticketIndex].prizeAmount
@@ -542,7 +542,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Return: { claim, netPrize, isLoading, isSuccess, error }
     - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.12, 11.6_
 
-  - [ ] 15.4 Add social sharing features
+  - [x] 15.4 Add social sharing features
     - Create fe/src/components/shared/ShareButtons.tsx
     - Accept prizeAmount and lotteryId as props
     - Generate Twitter share text: "I just won X ETH in a mystery lottery! 🎉"
