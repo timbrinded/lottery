@@ -168,7 +168,7 @@ function TicketPage() {
   }
 
   // Parse lottery data - getLotteryStatus returns [state, commitDeadline, revealTime, claimDeadline, createdAt]
-  const [state, commitDeadline, revealTime] = lotteryData as [
+  const [state, commitDeadline, revealTime, claimDeadline] = lotteryData as [
     number,
     bigint,
     bigint,
@@ -178,6 +178,7 @@ function TicketPage() {
 
   const commitDeadlineSeconds = Number(commitDeadline);
   const revealTimeSeconds = Number(revealTime);
+  const claimDeadlineSeconds = Number(claimDeadline);
   const now = Math.floor(Date.now() / 1000);
 
   // Determine current phase
@@ -202,9 +203,9 @@ function TicketPage() {
   );
 
   // Parse ticket data - tickets returns [holder, committed, redeemed, prizeAmount]
-  const ticketCommitted = ticketData ? (ticketData[1] as boolean) : undefined;
-  const ticketRedeemed = ticketData ? (ticketData[2] as boolean) : undefined;
-  const prizeAmount = ticketData ? (ticketData[3] as bigint) : undefined;
+  const ticketCommitted = ticketData ? ((ticketData as readonly [string, boolean, boolean, bigint])[1]) : undefined;
+  const ticketRedeemed = ticketData ? ((ticketData as readonly [string, boolean, boolean, bigint])[2]) : undefined;
+  const prizeAmount = ticketData ? ((ticketData as readonly [string, boolean, boolean, bigint])[3]) : undefined;
 
   // Claim prize hook
   const {
@@ -314,6 +315,30 @@ function TicketPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Claim Deadline Warning */}
+              {claimDeadlineSeconds > 0 && (
+                <Alert 
+                  variant={
+                    (claimDeadlineSeconds - now) < 3600 ? 'destructive' : 
+                    (claimDeadlineSeconds - now) < 21600 ? 'default' : 
+                    'default'
+                  }
+                  className={
+                    (claimDeadlineSeconds - now) < 3600 ? 'animate-pulse' : 
+                    (claimDeadlineSeconds - now) < 21600 ? 'border-yellow-500 bg-yellow-50' : 
+                    ''
+                  }
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>⚠️ Claim within 24 hours or prize goes to rollover pool!</strong>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm">Claim deadline:</span>
+                      <Countdown deadline={claimDeadlineSeconds} />
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
               {!isPrizeChecked ? (
                 <div className="text-center space-y-4">
                   <p className="text-muted-foreground">

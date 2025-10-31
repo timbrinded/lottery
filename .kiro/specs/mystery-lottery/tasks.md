@@ -551,42 +551,42 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Show toast notification on successful copy
     - _Requirements: 7.7, 7.8, 13.1, 13.2_
 
-- [ ] 16. Implement countdown and deadline UI
+- [x] 16. Implement countdown and deadline UI
 
-  - [ ] 16.1 Create Countdown component
+  - [x] 16.1 Create Countdown component
 
-    - Create fe/src/components/shared/Countdown.tsx
-    - Accept deadline (Unix timestamp in seconds) as prop
-    - Use useState and useEffect with setInterval to update every second
-    - Calculate remaining: days, hours, minutes, seconds
-    - Display format based on time remaining:
+    - ✅ Create fe/src/components/shared/Countdown.tsx (already existed)
+    - ✅ Accept deadline (Unix timestamp in seconds) as prop
+    - ✅ Use useState and useEffect with setInterval to update every second
+    - ✅ Calculate remaining: days, hours, minutes, seconds
+    - ✅ Display format based on time remaining:
       - > 1 day: "X days Y hours"
       - > 1 hour: "X hours Y minutes"
       - < 1 hour: "X minutes Y seconds"
-    - Show "Deadline passed" when deadline < now
-    - Add color coding: green (>24h), yellow (6-24h), red (<6h)
+    - ✅ Show "Deadline passed" when deadline < now
+    - ✅ Add color coding: green (>24h), yellow (6-24h), red (<6h)
     - _Requirements: 2.6, 3.2, 5.2, 6.9_
 
-  - [ ] 16.1b Create BlockCountdown component
+  - [x] 16.1b Create BlockCountdown component
 
-    - Create fe/src/components/shared/BlockCountdown.tsx
-    - Accept targetBlock (block number) as prop
-    - Use wagmi's useBlockNumber to get current block
-    - Calculate remaining blocks: targetBlock - currentBlock
-    - Estimate time: remainingBlocks \* 12 seconds (Arc block time)
-    - Display: "X blocks remaining (~Y minutes)"
-    - Show "Block reached!" when currentBlock >= targetBlock
-    - Add color coding: green (>10 blocks), yellow (5-10 blocks), red (<5 blocks)
+    - ✅ Create fe/src/components/shared/BlockCountdown.tsx
+    - ✅ Accept targetBlock (block number) as prop
+    - ✅ Use wagmi's useBlockNumber to get current block
+    - ✅ Calculate remaining blocks: targetBlock - currentBlock
+    - ✅ Estimate time: remainingBlocks \* 12 seconds (Arc block time)
+    - ✅ Display: "X blocks remaining (~Y minutes)"
+    - ✅ Show "Block reached!" when currentBlock >= targetBlock
+    - ✅ Add color coding: green (>10 blocks), yellow (5-10 blocks), red (<5 blocks)
     - _Requirements: 4.6, 10.2_
 
-  - [ ] 16.2 Add deadline warnings
+  - [x] 16.2 Add deadline warnings
 
-    - Add Alert component to ticket.tsx when lottery.state === RevealOpen
-    - Show "⚠️ Claim within 24 hours or prize goes to rollover pool!"
-    - Use shadcn Alert with destructive variant (red)
-    - Display claim deadline: formatDate(lottery.claimDeadline)
-    - Add pulsing animation when < 1 hour remains (tw-animate-pulse)
-    - Change Alert color based on urgency: yellow (>6h), red (<6h)
+    - ✅ Add Alert component to ticket.tsx when lottery.state === RevealOpen
+    - ✅ Show "⚠️ Claim within 24 hours or prize goes to rollover pool!"
+    - ✅ Use shadcn Alert with destructive variant (red)
+    - ✅ Display claim deadline with Countdown component
+    - ✅ Add pulsing animation when < 1 hour remains (tw-animate-pulse)
+    - ✅ Change Alert color based on urgency: yellow (>6h), red (<6h)
     - _Requirements: 6.9, 6.10_
 
 - [ ] 17. Implement error handling and validation

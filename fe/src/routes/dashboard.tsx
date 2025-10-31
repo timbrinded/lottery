@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useAccount, useBlockNumber } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useState, useEffect, useMemo } from 'react'
 import { useReadLotteryFactory, useWatchLotteryFactoryEvent, useLotteryFactoryAddress } from '@/contracts/hooks'
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Countdown } from '@/components/shared/Countdown'
+import { BlockCountdown } from '@/components/shared/BlockCountdown'
 import { useCloseCommitPeriod } from '@/hooks/useCloseCommitPeriod'
 import { useRevealLottery } from '@/hooks/useRevealLottery'
 import { RevealLotteryModal } from '@/components/lottery/RevealLotteryModal'
@@ -60,12 +61,8 @@ function DashboardPage() {
       const count = Number(lotteryCounter)
       for (let i = 1; i < count; i++) {
         try {
-          // Fetch lottery creator
-          const creatorData = await fetch(`/api/lottery/${i}/creator`).catch(() => null)
-          
           // For now, we'll use a simpler approach - just check if we can read the lottery
           // In production, you'd want to use event logs for better performance
-          const lotteryId = BigInt(i)
           
           // This is a placeholder - in production you'd fetch from the contract
           // For now, we'll skip this and show a message
@@ -245,8 +242,6 @@ interface LotteryCardProps {
 
 function LotteryCard({ lottery }: LotteryCardProps) {
   const state = getStateString(lottery.state)
-  const now = Math.floor(Date.now() / 1000)
-  const { data: currentBlock } = useBlockNumber({ watch: true })
   const [showRevealModal, setShowRevealModal] = useState(false)
   
   const {
@@ -266,7 +261,6 @@ function LotteryCard({ lottery }: LotteryCardProps) {
     isSuccess: revealSuccess,
     error: revealError,
     canReveal,
-    blocksRemaining,
   } = useRevealLottery({
     lotteryId: lottery.id,
     randomnessBlock: lottery.randomnessBlock,
@@ -355,13 +349,12 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             </Button>
           )}
 
-          {state === 'CommitClosed' && !canReveal && blocksRemaining > 0 && (
+          {state === 'CommitClosed' && !canReveal && lottery.randomnessBlock > 0 && (
             <Alert>
               <AlertDescription className="text-sm">
                 Waiting for randomness block...
                 <br />
-                <span className="font-mono">{blocksRemaining} blocks remaining</span>
-                <span className="text-gray-500"> (~{Math.ceil(blocksRemaining * 12 / 60)} min)</span>
+                <BlockCountdown targetBlock={lottery.randomnessBlock} />
               </AlertDescription>
             </Alert>
           )}
