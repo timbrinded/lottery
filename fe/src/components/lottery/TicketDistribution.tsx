@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Download, Check } from 'lucide-react';
+import { encodeTicketCode } from '@/lib/crypto';
 
 interface TicketDistributionProps {
   lotteryId: bigint;
@@ -16,6 +17,7 @@ interface TicketData {
   lotteryId: string;
   ticketIndex: number;
   ticketSecret: string;
+  ticketCode: string;
   redemptionUrl: string;
 }
 
@@ -36,12 +38,16 @@ export function TicketDistribution({
     return `${window.location.origin}/ticket?${params.toString()}`;
   };
 
-  const tickets: TicketData[] = ticketSecrets.map((secret, index) => ({
-    lotteryId: lotteryId.toString(),
-    ticketIndex: index,
-    ticketSecret: secret,
-    redemptionUrl: generateRedemptionUrl(index, secret),
-  }));
+  const tickets: TicketData[] = ticketSecrets.map((secret, index) => {
+    const ticketCode = encodeTicketCode(lotteryId, index, secret);
+    return {
+      lotteryId: lotteryId.toString(),
+      ticketIndex: index,
+      ticketSecret: secret,
+      ticketCode,
+      redemptionUrl: generateRedemptionUrl(index, secret),
+    };
+  });
 
   const copyToClipboard = async (text: string, index?: number) => {
     try {
@@ -64,6 +70,7 @@ export function TicketDistribution({
       creatorSecret,
       tickets: tickets.map(t => ({
         ticketIndex: t.ticketIndex,
+        ticketCode: t.ticketCode,
         ticketSecret: t.ticketSecret,
         redemptionUrl: t.redemptionUrl,
       })),
@@ -150,29 +157,19 @@ export function TicketDistribution({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* QR Code */}
-                <div className="flex justify-center p-4 bg-white rounded-md">
-                  <QRCodeSVG
-                    value={ticket.redemptionUrl}
-                    size={150}
-                    level="M"
-                    includeMargin
-                  />
-                </div>
-
-                {/* Redemption URL */}
+                {/* Compact Ticket Code (Primary) */}
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Redemption URL
+                    Ticket Code (Share This!)
                   </label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs p-2 bg-muted rounded-md break-all">
-                      {ticket.redemptionUrl}
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
+                    <code className="flex-1 text-sm font-mono font-semibold break-all">
+                      {ticket.ticketCode}
                     </code>
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(ticket.redemptionUrl, ticket.ticketIndex)}
+                      variant="default"
+                      onClick={() => copyToClipboard(ticket.ticketCode, ticket.ticketIndex)}
                     >
                       {copiedIndex === ticket.ticketIndex ? (
                         <Check className="h-4 w-4" />
@@ -181,29 +178,67 @@ export function TicketDistribution({
                       )}
                     </Button>
                   </div>
-                </div>
-
-                {/* Ticket Secret (for reference) */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Ticket Secret (Raw - NOT hashed)
-                  </label>
-                  <div className="flex items-start gap-2">
-                    <code className="flex-1 text-xs p-2 bg-muted rounded-md break-all">
-                      {ticket.ticketSecret}
-                    </code>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(ticket.ticketSecret)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic">
-                    This is the actual secret value (not a hash). Participants need this exact value to commit and claim prizes.
+                  <p className="text-xs text-muted-foreground">
+                    Compact code - participants can paste this directly into the redemption page
                   </p>
                 </div>
+
+                {/* QR Code */}
+                <div className="flex justify-center p-4 bg-white rounded-md border">
+                  <QRCodeSVG
+                    value={ticket.ticketCode}
+                    size={150}
+                    level="M"
+                    includeMargin
+                  />
+                </div>
+
+                {/* Advanced Options (Collapsible) */}
+                <details className="space-y-2">
+                  <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground">
+                    Advanced Options
+                  </summary>
+                  
+                  <div className="space-y-3 pt-2">
+                    {/* Redemption URL */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Full URL (Alternative)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs p-2 bg-muted rounded-md break-all">
+                          {ticket.redemptionUrl}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyToClipboard(ticket.redemptionUrl)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Ticket Secret (for reference) */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Raw Secret (For Reference)
+                      </label>
+                      <div className="flex items-start gap-2">
+                        <code className="flex-1 text-xs p-2 bg-muted rounded-md break-all">
+                          {ticket.ticketSecret}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyToClipboard(ticket.ticketSecret)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </details>
               </CardContent>
             </Card>
           ))}
@@ -218,7 +253,8 @@ export function TicketDistribution({
         <CardContent className="space-y-4 text-sm">
           <ol className="list-decimal list-inside space-y-2">
             <li>Save your creator secret in a secure location</li>
-            <li>Share ticket URLs or QR codes with participants</li>
+            <li>Share the compact ticket codes or QR codes with participants</li>
+            <li>Participants paste the code into the redemption page</li>
             <li>Participants must commit their tickets before the deadline</li>
             <li>After the commit deadline, you can reveal the lottery using your secret</li>
             <li>Winners can then claim their prizes</li>
@@ -226,8 +262,8 @@ export function TicketDistribution({
           
           <Alert>
             <AlertDescription className="text-xs">
-              <strong>Note about ticket secrets:</strong> The ticket secrets shown above are the actual raw secret values (32-byte hex strings), NOT hashes. 
-              These are what participants need to commit and claim prizes. The system automatically hashes these secrets when storing them on-chain for the commit-reveal pattern.
+              <strong>About the ticket codes:</strong> The compact codes shown above encode all ticket information (lottery ID, ticket number, and secret) into a short base58 string. 
+              Participants can simply paste this code into the redemption page - no need for long URLs! The QR codes also contain these compact codes for easy scanning.
             </AlertDescription>
           </Alert>
         </CardContent>

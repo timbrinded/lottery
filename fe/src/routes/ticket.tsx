@@ -43,7 +43,7 @@ function TicketPage() {
     
     // Check if user pasted a transaction hash
     if (trimmedInput.match(/^0x[a-fA-F0-9]{64}$/)) {
-      setParseError('⚠️ This looks like a transaction hash, not a ticket code. You need the ticket redemption URL from the lottery creator (starts with your site URL or contains lottery/ticket/secret parameters).');
+      setParseError('⚠️ This looks like a transaction hash, not a ticket code. You need the ticket code from the lottery creator (a short base58 string like "2Xk9pQr7vB3mN8cF...").');
       return;
     }
     
@@ -56,7 +56,7 @@ function TicketPage() {
       });
       window.location.href = `/ticket?${params.toString()}`;
     } else {
-      setParseError('Invalid ticket format. Please paste your complete ticket URL or code (e.g., https://yoursite.com/ticket?lottery=1&ticket=0&secret=0x...)');
+      setParseError('Invalid ticket format. Please paste your ticket code (compact base58 format) or complete URL.');
     }
   };
 
@@ -84,17 +84,20 @@ function TicketPage() {
               <AlertDescription>
                 <strong>How to redeem:</strong>
                 <ul className="mt-2 space-y-1 text-sm">
-                  <li>• Paste the complete ticket URL you received</li>
-                  <li>• Or scan the QR code provided by the creator</li>
+                  <li>• Paste the ticket code you received from the lottery creator</li>
+                  <li>• Or scan the QR code provided</li>
                   <li>• Accepted formats:</li>
-                  <li className="ml-4 text-xs font-mono text-muted-foreground">
+                  <li className="ml-4 text-xs">
+                    <strong>Compact code (recommended):</strong>
+                  </li>
+                  <li className="ml-6 text-xs font-mono text-muted-foreground">
+                    2Xk9pQr7vB3mN8cF...
+                  </li>
+                  <li className="ml-4 text-xs">
+                    <strong>Full URL:</strong>
+                  </li>
+                  <li className="ml-6 text-xs font-mono text-muted-foreground">
                     https://app.com/ticket?lottery=1&ticket=0&secret=0x...
-                  </li>
-                  <li className="ml-4 text-xs font-mono text-muted-foreground">
-                    lottery=1&ticket=0&secret=0x...
-                  </li>
-                  <li className="ml-4 text-xs font-mono text-muted-foreground">
-                    1-0-0x...
                   </li>
                 </ul>
               </AlertDescription>
