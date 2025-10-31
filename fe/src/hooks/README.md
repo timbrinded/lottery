@@ -44,9 +44,20 @@ Secrets are stored in local storage under the key `lottery-creator-secrets` as a
 
 ```json
 {
-  "1": "0xa8dfd8593ce604563a7967e0566f3524369fdfebf0a87bd89ab6babb366590b7",
-  "2": "0x...",
-  "3": "0x..."
+  "1": {
+    "creatorSecret": "0xa8dfd8593ce604563a7967e0566f3524369fdfebf0a87bd89ab6babb366590b7",
+    "ticketSecrets": [
+      "0x...",
+      "0x...",
+      "0x..."
+    ],
+    "createdAt": 1234567890
+  },
+  "2": {
+    "creatorSecret": "0x...",
+    "ticketSecrets": ["0x..."],
+    "createdAt": 1234567891
+  }
 }
 ```
 
@@ -59,6 +70,7 @@ Secrets are stored in local storage under the key `lottery-creator-secrets` as a
 
 ### Integration Points
 
-1. **useCreateLottery**: Automatically saves secrets after lottery creation
+1. **useCreateLottery**: Automatically saves creator secret and ticket secrets after lottery creation
 2. **Dashboard**: Provides "View Secret" / "Restore Secret" button for each lottery
-3. **RestoreSecretModal**: UI for viewing and restoring secrets
+3. **RestoreSecretModal**: UI for viewing and restoring creator secrets, with button to view tickets
+4. **ViewTicketsModal**: UI for viewing all ticket codes with QR codes and copy functionality

@@ -19,6 +19,7 @@ interface RestoreSecretModalProps {
   onOpenChange: (open: boolean) => void;
   lotteryId: bigint;
   creatorCommitment: `0x${string}`;
+  onViewTickets?: () => void;
 }
 
 export function RestoreSecretModal({
@@ -26,8 +27,9 @@ export function RestoreSecretModal({
   onOpenChange,
   lotteryId,
   creatorCommitment,
+  onViewTickets,
 }: RestoreSecretModalProps) {
-  const { getSecret, saveSecret, validateSecret, hasSecret } = useLotterySecrets();
+  const { getSecret, saveSecret, validateSecret, hasSecret, getTicketSecrets } = useLotterySecrets();
   const [pastedSecret, setPastedSecret] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [, copy] = useCopyToClipboard();
@@ -35,6 +37,8 @@ export function RestoreSecretModal({
 
   const storedSecret = getSecret(lotteryId);
   const hasStoredSecret = hasSecret(lotteryId);
+  const ticketSecrets = getTicketSecrets(lotteryId);
+  const hasTickets = ticketSecrets.length > 0;
 
   const handlePasteSecret = () => {
     setError(null);
@@ -56,8 +60,8 @@ export function RestoreSecretModal({
       return;
     }
 
-    // Save the secret
-    saveSecret(lotteryId, pastedSecret.trim());
+    // Save the secret (without ticket secrets - those need to be imported separately)
+    saveSecret(lotteryId, pastedSecret.trim(), []);
     setPastedSecret('');
     setError(null);
   };
@@ -108,6 +112,22 @@ export function RestoreSecretModal({
                   </div>
                 </AlertDescription>
               </Alert>
+
+              {hasTickets && onViewTickets && (
+                <Button onClick={onViewTickets} className="w-full" variant="default">
+                  View All Ticket Codes ({ticketSecrets.length} tickets)
+                </Button>
+              )}
+
+              {!hasTickets && (
+                <Alert>
+                  <AlertDescription className="text-sm">
+                    <strong>Note:</strong> Ticket codes are not available for this lottery.
+                    They may not have been saved, or this lottery was created before the
+                    ticket storage feature was added.
+                  </AlertDescription>
+                </Alert>
+              )}
             </>
           ) : (
             <>

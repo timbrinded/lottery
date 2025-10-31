@@ -78,12 +78,12 @@ export function useCreateLottery(chainId: number): CreateLotteryResult {
     }
   }
 
-  // Auto-save creator secret to local storage when lottery is created
+  // Auto-save creator secret and ticket secrets to local storage when lottery is created
   useEffect(() => {
-    if (lotteryId && creatorSecret) {
-      saveSecret(lotteryId, creatorSecret);
+    if (lotteryId && creatorSecret && ticketSecrets) {
+      saveSecret(lotteryId, creatorSecret, ticketSecrets);
     }
-  }, [lotteryId, creatorSecret, saveSecret]);
+  }, [lotteryId, creatorSecret, ticketSecrets, saveSecret]);
 
   const createLottery = useCallback(
     async (params: CreateLotteryParams) => {

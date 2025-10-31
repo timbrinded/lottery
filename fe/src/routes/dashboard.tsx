@@ -12,6 +12,7 @@ import { useCloseCommitPeriod } from '@/hooks/useCloseCommitPeriod'
 import { useRevealLottery } from '@/hooks/useRevealLottery'
 import { RevealLotteryModal } from '@/components/lottery/RevealLotteryModal'
 import { RestoreSecretModal } from '@/components/lottery/RestoreSecretModal'
+import { ViewTicketsModal } from '@/components/lottery/ViewTicketsModal'
 import { ContractNotDeployed } from '@/components/ContractNotDeployed'
 import { formatEther } from 'viem'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -301,6 +302,7 @@ function LotteryCard({ lottery }: LotteryCardProps) {
   const state = getStateString(lottery.state)
   const [showRevealModal, setShowRevealModal] = useState(false)
   const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [showTicketsModal, setShowTicketsModal] = useState(false)
   const { hasSecret, getSecret } = useLotterySecrets()
   
   const {
@@ -500,6 +502,17 @@ function LotteryCard({ lottery }: LotteryCardProps) {
         onOpenChange={setShowRestoreModal}
         lotteryId={lottery.id}
         creatorCommitment={lottery.creatorCommitment}
+        onViewTickets={() => {
+          setShowRestoreModal(false)
+          setShowTicketsModal(true)
+        }}
+      />
+
+      {/* View Tickets Modal */}
+      <ViewTicketsModal
+        open={showTicketsModal}
+        onOpenChange={setShowTicketsModal}
+        lotteryId={lottery.id}
       />
     </Card>
   )

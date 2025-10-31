@@ -62,12 +62,15 @@ Updated the ticket distribution component to:
 4. User is notified of auto-save and encouraged to back up externally
 5. User can access the secret later from the dashboard
 
-### Accessing Saved Secrets
+### Accessing Saved Secrets and Tickets
 
 1. User navigates to dashboard
 2. Each lottery card shows "View Secret" button (if secret exists) or "Restore Secret" (if not)
 3. Clicking the button opens a modal showing the saved secret
 4. User can copy the secret to clipboard
+5. If ticket secrets are available, a "View All Ticket Codes" button is shown
+6. Clicking "View All Ticket Codes" opens a modal with all ticket codes, QR codes, and copy buttons
+7. User can share individual ticket codes or download all tickets as JSON
 
 ### Restoring Lost Secrets
 
@@ -100,9 +103,20 @@ Updated the ticket distribution component to:
 ```json
 {
   "lottery-creator-secrets": {
-    "1": "0xa8dfd8593ce604563a7967e0566f3524369fdfebf0a87bd89ab6babb366590b7",
-    "2": "0x...",
-    "3": "0x..."
+    "1": {
+      "creatorSecret": "0xa8dfd8593ce604563a7967e0566f3524369fdfebf0a87bd89ab6babb366590b7",
+      "ticketSecrets": [
+        "0x1234...",
+        "0x5678...",
+        "0x9abc..."
+      ],
+      "createdAt": 1234567890
+    },
+    "2": {
+      "creatorSecret": "0x...",
+      "ticketSecrets": ["0x..."],
+      "createdAt": 1234567891
+    }
   }
 }
 ```
@@ -122,12 +136,14 @@ Secrets are validated by:
 
 ## Files Modified
 
-1. `fe/src/hooks/useLotterySecrets.ts` - New storage hook
-2. `fe/src/components/lottery/RestoreSecretModal.tsx` - New modal component
-3. `fe/src/hooks/useCreateLottery.ts` - Added auto-save
-4. `fe/src/routes/dashboard.tsx` - Added restore UI
-5. `fe/src/components/lottery/TicketDistribution.tsx` - Updated notifications
-6. `fe/src/hooks/README.md` - Documentation
+1. `fe/src/hooks/useLotterySecrets.ts` - Storage hook with creator + ticket secrets
+2. `fe/src/components/lottery/RestoreSecretModal.tsx` - Modal for viewing/restoring creator secret
+3. `fe/src/components/lottery/ViewTicketsModal.tsx` - New modal for viewing all ticket codes
+4. `fe/src/hooks/useCreateLottery.ts` - Auto-save creator + ticket secrets
+5. `fe/src/routes/dashboard.tsx` - Added restore and view tickets UI
+6. `fe/src/components/lottery/TicketDistribution.tsx` - Updated notifications
+7. `fe/src/hooks/README.md` - Documentation
+8. `.kiro/specs/mystery-lottery/secret-storage-feature.md` - Feature documentation
 
 ## Testing
 

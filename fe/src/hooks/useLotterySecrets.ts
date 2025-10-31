@@ -2,10 +2,16 @@ import { useLocalStorage } from 'usehooks-ts';
 import { hashSecret } from '@/lib/crypto';
 
 /**
- * Storage structure for lottery creator secrets
- * Maps lottery ID to creator secret
+ * Storage structure for lottery secrets
+ * Includes both creator secret and ticket secrets
  */
-type LotterySecretsMap = Record<string, string>;
+interface LotterySecretData {
+  creatorSecret: string;
+  ticketSecrets: string[];
+  createdAt: number;
+}
+
+type LotterySecretsMap = Record<string, LotterySecretData>;
 
 /**
  * Hook for managing lottery creator secrets in local storage
@@ -18,22 +24,46 @@ export function useLotterySecrets() {
   );
 
   /**
-   * Save a creator secret for a lottery
+   * Save secrets for a lottery (creator secret and ticket secrets)
    */
-  const saveSecret = (lotteryId: bigint | string, secret: string) => {
+  const saveSecret = (
+    lotteryId: bigint | string,
+    creatorSecret: string,
+    ticketSecrets?: string[]
+  ) => {
     const id = lotteryId.toString();
     setSecrets((prev) => ({
       ...prev,
-      [id]: secret,
+      [id]: {
+        creatorSecret,
+        ticketSecrets: ticketSecrets || [],
+        createdAt: Date.now(),
+      },
     }));
   };
 
   /**
-   * Get a creator secret for a lottery
+   * Get the creator secret for a lottery
    */
   const getSecret = (lotteryId: bigint | string): string | null => {
     const id = lotteryId.toString();
+    return secrets[id]?.creatorSecret || null;
+  };
+
+  /**
+   * Get all secret data for a lottery (creator + tickets)
+   */
+  const getSecretData = (lotteryId: bigint | string): LotterySecretData | null => {
+    const id = lotteryId.toString();
     return secrets[id] || null;
+  };
+
+  /**
+   * Get ticket secrets for a lottery
+   */
+  const getTicketSecrets = (lotteryId: bigint | string): string[] => {
+    const id = lotteryId.toString();
+    return secrets[id]?.ticketSecrets || [];
   };
 
   /**
@@ -88,6 +118,8 @@ export function useLotterySecrets() {
   return {
     saveSecret,
     getSecret,
+    getSecretData,
+    getTicketSecrets,
     hasSecret,
     validateSecret,
     removeSecret,
