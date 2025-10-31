@@ -26,7 +26,7 @@ export default function Header() {
         
         <div className="flex items-center gap-3">
           <NetworkSwitcher />
-          <ConnectButton />
+          <ConnectButton showBalance={false} chainStatus="none" />
         </div>
       </header>
 
