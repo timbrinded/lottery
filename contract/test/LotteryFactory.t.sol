@@ -135,7 +135,7 @@ contract LotteryFactoryTest is Test {
 
         uint256 totalPrize = 175e6; // 175 USDC total
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         // Create lottery
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
@@ -165,7 +165,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 40e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -204,7 +204,7 @@ contract LotteryFactoryTest is Test {
 
         uint256 totalPrize = 100e6;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
@@ -233,7 +233,7 @@ contract LotteryFactoryTest is Test {
         uint256[] memory prizeValues = new uint256[](0); // Empty array
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         vm.expectRevert(LotteryFactory.EmptyPrizeArray.selector);
         factory.createLottery{value: 0}(
@@ -249,7 +249,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 100e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         vm.expectRevert(LotteryFactory.EmptyTicketsArray.selector);
         factory.createLottery{value: 100e6}(
@@ -269,7 +269,7 @@ contract LotteryFactoryTest is Test {
         // Total is 100 USDC but sending 90 USDC
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         vm.expectRevert(LotteryFactory.InvalidPrizeSum.selector);
         factory.createLottery{value: 90e6}(
@@ -287,8 +287,27 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 60e6;
         prizeValues[1] = 40e6;
 
-        uint256 commitDeadline = block.timestamp + 2 hours;
+        uint256 commitDeadline = block.timestamp + 1 hours;
         uint256 revealTime = block.timestamp + 1 hours; // Reveal before commit!
+
+        vm.expectRevert(LotteryFactory.InvalidDeadlines.selector);
+        factory.createLottery{value: 100e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+    }
+
+    function test_CreateLottery_RevertsOnRevealTimeTooFar() public {
+        bytes32 creatorCommitment = keccak256("creator_secret");
+        bytes32[] memory ticketSecretHashes = new bytes32[](2);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+
+        uint256[] memory prizeValues = new uint256[](2);
+        prizeValues[0] = 60e6;
+        prizeValues[1] = 40e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 2 hours; // More than 40 minutes after commit
 
         vm.expectRevert(LotteryFactory.InvalidDeadlines.selector);
         factory.createLottery{value: 100e6}(
@@ -335,7 +354,7 @@ contract LotteryFactoryTest is Test {
         prizes2[1] = 20e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         // Create first lottery
         uint256 id1 = factory.createLottery{value: 50e6}(commitment1, tickets1, prizes1, commitDeadline, revealTime, 0);
@@ -352,7 +371,7 @@ contract LotteryFactoryTest is Test {
         // Bound inputs to reasonable ranges
         numTickets = uint8(bound(numTickets, 1, 100));
         totalPrize = bound(totalPrize, uint256(numTickets) * 1e6, 1_000_000e6); // Min 1 USDC per ticket, max 1M USDC
-        timeOffset = bound(timeOffset, 2 hours, 365 days); // At least 2 hours to allow commit + reveal
+        timeOffset = bound(timeOffset, 10 minutes, 35 minutes); // Must be within blockhash window (40 min limit)
 
         // Setup arrays
         bytes32[] memory ticketSecretHashes = new bytes32[](numTickets);
@@ -403,7 +422,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 40e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -440,7 +459,7 @@ contract LotteryFactoryTest is Test {
         uint256 totalPrize = 175e6;
 
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Test accessor
@@ -462,7 +481,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Test accessor
@@ -485,7 +504,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Test accessor
@@ -506,7 +525,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Test accessor (before reveal)
@@ -527,7 +546,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Should be open initially
@@ -547,7 +566,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Should not be ready initially (still in CommitOpen state)
@@ -563,7 +582,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Should not be active initially (not revealed yet)
@@ -591,7 +610,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Commit ticket as different user
@@ -619,7 +638,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         address user = address(0x456);
@@ -645,7 +664,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Warp past deadline
@@ -669,7 +688,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 40e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Try to commit with invalid index (out of bounds)
@@ -689,7 +708,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Try to commit with wrong secret hash
@@ -708,7 +727,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         address user = address(0x789);
@@ -737,7 +756,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         address user1 = address(0x111);
@@ -781,7 +800,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         address user1 = address(0x111);
@@ -816,7 +835,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Verify initial state
@@ -847,7 +866,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Try to close before deadline
@@ -868,7 +887,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Warp past deadline and close
@@ -895,7 +914,7 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 2 hours, 0
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Warp past deadline
@@ -931,7 +950,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 5e6; // 5 USDC
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -992,7 +1011,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1027,7 +1046,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1060,7 +1079,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1088,7 +1107,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1113,7 +1132,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1148,7 +1167,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 5e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1206,7 +1225,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 5e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1243,7 +1262,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1290,7 +1309,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 5e6; // 5 USDC
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         // Should succeed with 3 prizes and 100 tickets
         uint256 lotteryId = factory.createLottery{value: 100e6}(
@@ -1327,7 +1346,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 5e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1384,7 +1403,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 5e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1448,7 +1467,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 2e18; // 2 ETH
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 17e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1518,7 +1537,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18; // 10 ETH
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1574,7 +1593,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 5e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1618,7 +1637,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 8e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 8e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1666,7 +1685,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 3e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 8e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1705,7 +1724,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1747,7 +1766,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1785,7 +1804,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1825,7 +1844,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1861,7 +1880,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1898,7 +1917,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1939,7 +1958,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -1968,7 +1987,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 1e18; // 1 ETH prize
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 1e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2024,7 +2043,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 10e18; // Only 1 prize
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2093,7 +2112,7 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2203,7 +2222,7 @@ contract LotteryFactoryRefundTest is Test {
 
         uint256 totalPrize = 10e18;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         address creator = address(this);
         uint256 creatorBalanceBefore = creator.balance;
@@ -2259,7 +2278,7 @@ contract LotteryFactoryRefundTest is Test {
 
         uint256 totalPrize = 5e18;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         address creator = address(this);
 
@@ -2297,7 +2316,7 @@ contract LotteryFactoryRefundTest is Test {
         prizeValues[0] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 5e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2322,7 +2341,7 @@ contract LotteryFactoryRefundTest is Test {
         prizeValues[0] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 5e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2359,7 +2378,7 @@ contract LotteryFactoryRefundTest is Test {
         prizeValues[0] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 5e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2403,7 +2422,7 @@ contract LotteryFactoryRefundTest is Test {
 
         uint256 totalPrize = 5e18;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         address creator = address(this);
         uint256 creatorBalanceBefore = creator.balance;
@@ -2450,7 +2469,7 @@ contract LotteryFactoryRefundTest is Test {
 
         uint256 totalPrize = 10e18;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         address creator = address(this);
         uint256 creatorBalanceBefore = creator.balance;
@@ -2507,7 +2526,7 @@ contract LotteryFactoryRefundTest is Test {
         prizeValues[0] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 5e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2547,7 +2566,7 @@ contract LotteryFactoryRefundTest is Test {
         prizeValues[0] = 5e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 5e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2586,7 +2605,7 @@ contract LotteryFactoryRefundTest is Test {
 
         uint256 totalPrize = 5e18;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         address creator = address(this);
         uint256 creatorBalanceBefore = creator.balance;
@@ -2675,7 +2694,7 @@ contract LotteryFactoryIntegrationTest is Test {
 
         uint256 totalPrize = 17e18;
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         // Step 1: Create lottery
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
@@ -2754,7 +2773,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[2] = 2e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2808,7 +2827,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[2] = 2e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -2886,7 +2905,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizes1[1] = 3e18;
 
         uint256 lottery1 = factory.createLottery{value: 8e18}(
-            commitment1, tickets1, prizes1, block.timestamp + 1 hours, block.timestamp + 2 hours, 0
+            commitment1, tickets1, prizes1, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
         );
 
         // Only commit 1 ticket
@@ -2919,7 +2938,7 @@ contract LotteryFactoryIntegrationTest is Test {
         uint256 expectedTotal = 6e18 + rollover1;
 
         uint256 lottery2 = factory.createLottery{value: 6e18}(
-            commitment2, tickets2, prizes2, block.timestamp + 1 hours, block.timestamp + 2 hours, lottery1
+            commitment2, tickets2, prizes2, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, lottery1
         );
 
         // Verify rollover was added to prize pool
@@ -2948,7 +2967,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[2] = 2e18;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 17e18}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3009,7 +3028,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3035,7 +3054,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3062,7 +3081,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3089,7 +3108,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3117,7 +3136,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3154,7 +3173,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3193,7 +3212,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lottery1 = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3243,7 +3262,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3285,7 +3304,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
@@ -3325,7 +3344,7 @@ contract LotteryFactoryIntegrationTest is Test {
         prizeValues[0] = 10e6;
 
         uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
 
         uint256 lotteryId = factory.createLottery{value: 10e6}(
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0

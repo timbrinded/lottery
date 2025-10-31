@@ -19,6 +19,7 @@ import { Countdown } from "@/components/shared/Countdown";
 import { BlockCountdown } from "@/components/shared/BlockCountdown";
 import { useCloseCommitPeriod } from "@/hooks/useCloseCommitPeriod";
 import { useRevealLottery } from "@/hooks/useRevealLottery";
+import { useRefundLottery } from "@/hooks/useRefundLottery";
 import { RevealLotteryModal } from "@/components/lottery/RevealLotteryModal";
 import { RestoreSecretModal } from "@/components/lottery/RestoreSecretModal";
 import { ViewTicketsModal } from "@/components/lottery/ViewTicketsModal";
@@ -76,9 +77,15 @@ function DashboardPage() {
     if (!lotteryCounter) return [];
     const count = Number(lotteryCounter);
     const ids = [];
+    // lotteryCounter is the next ID to be used, so we fetch from 1 to count-1
+    // But if count is 11, we want lotteries 1-10, so we need i < count
     for (let i = 1; i < count; i++) {
       ids.push(BigInt(i));
     }
+    console.log(
+      "Fetching lottery IDs:",
+      ids.map((id) => id.toString())
+    );
     return ids;
   }, [lotteryCounter]);
 
@@ -93,6 +100,7 @@ function DashboardPage() {
       })),
       query: {
         enabled: !!contractAddress && lotteryIds.length > 0,
+        refetchInterval: 10000, // Refetch every 10 seconds to keep data fresh
       },
     });
 
@@ -106,6 +114,7 @@ function DashboardPage() {
     })),
     query: {
       enabled: !!contractAddress && lotteryIds.length > 0,
+      refetchInterval: 10000, // Refetch every 10 seconds to keep data fresh
     },
   });
 
@@ -116,26 +125,46 @@ function DashboardPage() {
       return;
     }
 
+    console.log(
+      "Processing lottery data. Total results:",
+      lotteriesData.length
+    );
+    console.log("Connected address:", address);
+
     const userLotteries: LotteryData[] = [];
 
     lotteriesData.forEach((result, index) => {
+      const lotteryId = lotteryIds[index];
+      console.log(`Processing lottery ${lotteryId}:`, {
+        status: result.status,
+        hasResult: !!result.result,
+      });
+
       if (result.status === "success" && result.result) {
         // Contract returns tuple as array: [creator, creatorCommitment, totalPrizePool, commitDeadline, randomnessBlock, revealTime, claimDeadline, randomSeed, state, createdAt, sponsoredGasPool, sponsoredGasUsed]
         const lotteryData = result.result as any[];
 
         // Check if we have valid data
         if (!lotteryData || lotteryData.length < 10) {
-          console.warn(`Invalid lottery data for ID ${lotteryIds[index]}`);
+          console.warn(`Invalid lottery data for ID ${lotteryId}`);
           return;
         }
 
         const creator = lotteryData[0] as string;
+        console.log(`Lottery ${lotteryId} creator:`, creator, "vs", address);
 
         // Only include lotteries created by the connected user
         if (creator && creator.toLowerCase() === address.toLowerCase()) {
+          const ticketCountData = ticketCountsData?.[index];
+          console.log(`Lottery ${lotteryIds[index]} ticket data:`, {
+            status: ticketCountData?.status,
+            result: ticketCountData?.result,
+            error: ticketCountData?.error,
+          });
+
           const ticketCount =
-            ticketCountsData?.[index]?.status === "success"
-              ? (ticketCountsData[index].result as any[]).length
+            ticketCountData?.status === "success"
+              ? (ticketCountData.result as any[]).length
               : 0;
 
           userLotteries.push({
@@ -151,10 +180,16 @@ function DashboardPage() {
             state: Number(lotteryData[8]),
             createdAt: lotteryData[9] as bigint,
           });
+          console.log(`Added lottery ${lotteryIds[index]} to user lotteries`);
+        } else {
+          console.log(
+            `Skipping lottery ${lotteryIds[index]} - creator mismatch`
+          );
         }
       }
     });
 
+    console.log("Total user lotteries:", userLotteries.length);
     setLotteries(userLotteries);
   }, [lotteriesData, ticketCountsData, address, lotteryIds]);
 
@@ -188,28 +223,60 @@ function DashboardPage() {
   });
 
   const filteredLotteries = useMemo(() => {
-    if (filter === "all") return lotteries;
+    console.log(
+      "Filtering lotteries. Filter:",
+      filter,
+      "Total lotteries:",
+      lotteries.length
+    );
+
+    if (filter === "all") {
+      console.log(
+        "Showing all lotteries:",
+        lotteries.map((l) => l.id.toString())
+      );
+      return lotteries;
+    }
 
     const now = Math.floor(Date.now() / 1000);
 
-    return lotteries.filter((lottery) => {
+    const filtered = lotteries.filter((lottery) => {
       const state = getStateString(lottery.state);
 
+      let shouldInclude = false;
       switch (filter) {
         case "active":
-          return state === "CommitOpen";
+          shouldInclude = state === "CommitOpen";
+          break;
         case "pending-reveal":
-          return state === "CommitClosed" && now >= Number(lottery.revealTime);
+          shouldInclude =
+            state === "CommitClosed" && now >= Number(lottery.revealTime);
+          break;
         case "waiting-randomness":
-          return state === "CommitClosed" && now < Number(lottery.revealTime);
+          shouldInclude =
+            state === "CommitClosed" && now < Number(lottery.revealTime);
+          break;
         case "revealed":
-          return state === "RevealOpen";
+          shouldInclude = state === "RevealOpen";
+          break;
         case "finalized":
-          return state === "Finalized";
+          shouldInclude = state === "Finalized";
+          break;
         default:
-          return true;
+          shouldInclude = true;
       }
+
+      console.log(
+        `Lottery ${lottery.id}: state=${state}, shouldInclude=${shouldInclude}, revealTime=${lottery.revealTime}, now=${now}`
+      );
+      return shouldInclude;
     });
+
+    console.log(
+      "Filtered lotteries:",
+      filtered.map((l) => l.id.toString())
+    );
+    return filtered;
   }, [lotteries, filter]);
 
   // Check if contract is deployed (after all hooks)
@@ -350,11 +417,46 @@ function LotteryCard({ lottery }: LotteryCardProps) {
     isSuccess: revealSuccess,
     error: revealError,
     canReveal,
+    timeRemaining,
+    blocksRemaining,
   } = useRevealLottery({
     lotteryId: lottery.id,
     randomnessBlock: lottery.randomnessBlock,
     revealTime: Number(lottery.revealTime),
   });
+
+  const {
+    refund,
+    isLoading: isRefunding,
+    isSuccess: refundSuccess,
+    error: refundError,
+    canRefund,
+  } = useRefundLottery({
+    lotteryId: lottery.id,
+    revealTime: Number(lottery.revealTime),
+  });
+
+  // Debug logging
+  useEffect(() => {
+    if (state === "CommitClosed") {
+      console.log(`Lottery ${lottery.id} reveal status:`, {
+        canReveal,
+        timeRemaining,
+        blocksRemaining,
+        revealTime: lottery.revealTime,
+        randomnessBlock: lottery.randomnessBlock,
+        now: Math.floor(Date.now() / 1000),
+      });
+    }
+  }, [
+    canReveal,
+    timeRemaining,
+    blocksRemaining,
+    state,
+    lottery.id,
+    lottery.revealTime,
+    lottery.randomnessBlock,
+  ]);
 
   const handleReveal = (secret: string) => {
     reveal(secret);
@@ -477,11 +579,48 @@ function LotteryCard({ lottery }: LotteryCardProps) {
           {state === "CommitClosed" &&
             !canReveal &&
             lottery.randomnessBlock > 0 && (
-              <Alert>
+              <Alert
+                variant={
+                  blocksRemaining === 0 && timeRemaining === 0
+                    ? "destructive"
+                    : "default"
+                }
+              >
                 <AlertDescription className="text-sm">
-                  Waiting for randomness block...
-                  <br />
-                  <BlockCountdown targetBlock={lottery.randomnessBlock} />
+                  {blocksRemaining > 0 ? (
+                    <>
+                      Waiting for randomness block...
+                      <br />
+                      <BlockCountdown targetBlock={lottery.randomnessBlock} />
+                    </>
+                  ) : timeRemaining > 0 ? (
+                    <>
+                      Block reached! Waiting for reveal time...
+                      <br />
+                      <span className="font-mono text-yellow-600">
+                        {Math.ceil(timeRemaining / 60)} minutes remaining
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Blockhash Expired!</strong>
+                      <br />
+                      The randomness block is more than 256 blocks old. The
+                      lottery cannot be revealed normally.
+                      <br />
+                      <br />
+                      <strong>Refund available in:</strong>
+                      <br />
+                      <Countdown
+                        deadline={Number(lottery.revealTime) + 24 * 60 * 60}
+                      />
+                      <br />
+                      <span className="text-xs text-muted-foreground">
+                        After 24 hours from reveal time, anyone can trigger a
+                        refund to return prizes to the creator.
+                      </span>
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -489,6 +628,24 @@ function LotteryCard({ lottery }: LotteryCardProps) {
           {state === "CommitClosed" && canReveal && (
             <Button onClick={handleRevealClick} className="w-full">
               Reveal Lottery
+            </Button>
+          )}
+
+          {state === "CommitClosed" && canRefund && (
+            <Button
+              onClick={refund}
+              disabled={isRefunding}
+              variant="destructive"
+              className="w-full"
+            >
+              {isRefunding ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Refunding...
+                </>
+              ) : (
+                "Refund Lottery (Blockhash Expired)"
+              )}
             </Button>
           )}
 
@@ -520,6 +677,22 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             <Alert>
               <AlertDescription className="text-sm text-green-600">
                 Commit period closed successfully!
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {refundSuccess && (
+            <Alert>
+              <AlertDescription className="text-sm text-green-600">
+                Lottery refunded successfully! Prizes returned to creator.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {refundError && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-sm">
+                {refundError.message}
               </AlertDescription>
             </Alert>
           )}

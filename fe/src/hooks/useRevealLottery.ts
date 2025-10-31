@@ -28,6 +28,7 @@ interface UseRevealLotteryReturn {
 /**
  * Hook to reveal a lottery and assign prizes
  * Only callable by lottery creator after randomness block is reached
+ * Fixed: Properly convert bigint revealTime to number for comparisons
  */
 export function useRevealLottery({
   lotteryId,
@@ -47,10 +48,19 @@ export function useRevealLottery({
   useEffect(() => {
     const checkRevealStatus = () => {
       const now = Math.floor(Date.now() / 1000)
-      const timeDiff = revealTime - now
+      const revealTimeNum = Number(revealTime)
+      const timeDiff = revealTimeNum - now
       setTimeRemaining(Math.max(0, timeDiff))
 
+      console.log(`[useRevealLottery] Checking reveal status for lottery ${lotteryId}:`, {
+        currentBlock,
+        randomnessBlock,
+        hasCurrentBlock: currentBlock !== undefined,
+        randomnessBlockPositive: randomnessBlock > 0,
+      });
+
       if (currentBlock !== undefined && randomnessBlock > 0) {
+        console.log('[useRevealLottery] Inside if block, calculating reveal status...');
         const blockDiff = Number(randomnessBlock - currentBlock)
         setBlocksRemaining(Math.max(0, blockDiff))
 
@@ -60,8 +70,17 @@ export function useRevealLottery({
         // 3. Reveal time has arrived
         const blockReached = currentBlock >= randomnessBlock
         const blockNotExpired = currentBlock <= randomnessBlock + BigInt(256)
-        const timeReached = now >= revealTime
+        const timeReached = now >= revealTimeNum
 
+        console.log(`[useRevealLottery] Reveal check for lottery ${lotteryId}:`, {
+          blockReached,
+          blockNotExpired,
+          timeReached,
+          now,
+          revealTimeNum,
+          currentBlock: currentBlock.toString(),
+          randomnessBlock: randomnessBlock.toString(),
+        })
         setCanReveal(blockReached && blockNotExpired && timeReached)
       } else {
         setCanReveal(false)
@@ -133,7 +152,8 @@ export function useRevealLottery({
     }
 
     const now = Math.floor(Date.now() / 1000)
-    if (now < revealTime) {
+    const revealTimeNum = Number(revealTime)
+    if (now < revealTimeNum) {
       setError(new Error(`Reveal time not reached yet. Please wait ${timeRemaining} more seconds`))
       return
     }
