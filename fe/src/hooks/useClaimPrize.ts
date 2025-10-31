@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWriteLotteryFactory } from '@/contracts/hooks';
 import { useWaitForTransactionReceipt, useGasPrice } from 'wagmi';
 import { toBytes } from 'viem';
+import { parseContractError } from '@/lib/errors';
 
 interface UseClaimPrizeParams {
   lotteryId: bigint;
@@ -28,6 +29,7 @@ export function useClaimPrize({
 }: UseClaimPrizeParams): UseClaimPrizeReturn {
   const [gasCost, setGasCost] = useState<bigint>(0n);
   const [netPrize, setNetPrize] = useState<bigint>(0n);
+  const [parsedError, setParsedError] = useState<Error | null>(null);
 
   const { writeLotteryFactory, data: txHash, error, isPending } = useWriteLotteryFactory();
   
@@ -36,6 +38,16 @@ export function useClaimPrize({
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+
+  // Parse errors
+  useEffect(() => {
+    if (error) {
+      const message = parseContractError(error.message);
+      setParsedError(new Error(message));
+    } else {
+      setParsedError(null);
+    }
+  }, [error]);
 
   // Calculate gas cost and net prize
   useEffect(() => {
@@ -71,7 +83,7 @@ export function useClaimPrize({
     gasCost,
     isLoading: isPending || isConfirming,
     isSuccess,
-    error: error as Error | null,
+    error: parsedError,
     txHash,
   };
 }

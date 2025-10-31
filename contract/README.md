@@ -41,6 +41,24 @@ $ forge snapshot
 
 ### Anvil
 
+#### Local Development (Forking Arc Testnet)
+
+For local development with Arc testnet state:
+
+```shell
+$ anvil --fork-url https://rpc.testnet.arc.network --chain-id 5042002
+```
+
+This will:
+- Fork the Arc testnet at the latest block
+- Preserve the chain ID (5042002) for compatibility
+- Allow you to test with real Arc testnet contracts and state
+- Provide 10 test accounts with 10,000 ETH each
+
+#### Standalone Local Node
+
+For a clean local environment without forking:
+
 ```shell
 $ anvil
 ```

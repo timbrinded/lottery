@@ -1,6 +1,7 @@
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { useReadLotteryFactory } from '@/contracts/hooks';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Countdown } from '@/components/shared/Countdown';
@@ -9,8 +10,9 @@ import { PrizeAnimation } from '@/components/ticket/PrizeAnimation';
 import { ShareButtons } from '@/components/shared/ShareButtons';
 import { useClaimPrize } from '@/hooks/useClaimPrize';
 import { parseTicketInput } from '@/lib/crypto';
+import { formatErrorForDisplay } from '@/lib/errors';
 import { AlertCircle, Ticket, CheckCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatEther } from 'viem';
 
 // Define search params type
@@ -37,7 +39,15 @@ function TicketPage() {
   const [parseError, setParseError] = useState<string | null>(null);
 
   const handleSubmit = () => {
-    const parsed = parseTicketInput(ticketInput);
+    const trimmedInput = ticketInput.trim();
+    
+    // Check if user pasted a transaction hash
+    if (trimmedInput.match(/^0x[a-fA-F0-9]{64}$/)) {
+      setParseError('⚠️ This looks like a transaction hash, not a ticket code. You need the ticket redemption URL from the lottery creator (starts with your site URL or contains lottery/ticket/secret parameters).');
+      return;
+    }
+    
+    const parsed = parseTicketInput(trimmedInput);
     if (parsed) {
       const params = new URLSearchParams({
         lottery: parsed.lottery,
@@ -46,7 +56,7 @@ function TicketPage() {
       });
       window.location.href = `/ticket?${params.toString()}`;
     } else {
-      setParseError('Invalid ticket format. Please paste your complete ticket URL or code.');
+      setParseError('Invalid ticket format. Please paste your complete ticket URL or code (e.g., https://yoursite.com/ticket?lottery=1&ticket=0&secret=0x...)');
     }
   };
 
@@ -186,6 +196,33 @@ function TicketPage() {
   const isCommitPhase = state === 1 && now < commitDeadlineSeconds; // CommitOpen
   const isCommitClosed = state === 2; // CommitClosed
   const isRevealed = state === 3; // RevealOpen
+  const isFinalized = state === 4; // Finalized
+
+  // Check localStorage for commit status
+  const localStorageKey = `committed_${lottery}_${ticket}`;
+  const [hasCommittedLocally, setHasCommittedLocally] = useState(false);
+
+  useEffect(() => {
+    const committed = localStorage.getItem(localStorageKey) === 'true';
+    setHasCommittedLocally(committed);
+  }, [localStorageKey]);
+
+  // Get lottery state badge
+  const getStateBadge = () => {
+    if (isFinalized) {
+      return <Badge variant="secondary">Finalized</Badge>;
+    }
+    if (isRevealed) {
+      return <Badge variant="default" className="bg-green-600">Revealed</Badge>;
+    }
+    if (isCommitClosed) {
+      return <Badge variant="secondary">Commit Closed</Badge>;
+    }
+    if (isCommitPhase) {
+      return <Badge variant="default" className="bg-blue-600">Commit Open</Badge>;
+    }
+    return <Badge variant="secondary">Pending</Badge>;
+  };
 
   // State for prize checking
   const [isPrizeChecked, setIsPrizeChecked] = useState(false);
@@ -242,9 +279,12 @@ function TicketPage() {
           <Ticket className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-3xl font-bold mb-2">Mystery Lottery Ticket</h1>
-        <p className="text-muted-foreground">
-          Lottery #{lottery} • Ticket #{ticket}
-        </p>
+        <div className="flex items-center justify-center gap-3">
+          <p className="text-muted-foreground">
+            Lottery #{lottery} • Ticket #{ticket}
+          </p>
+          {getStateBadge()}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -263,21 +303,35 @@ function TicketPage() {
                 <Countdown deadline={commitDeadlineSeconds} />
               </div>
 
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  You must enter the draw before the deadline. After the deadline passes,
-                  the lottery will be revealed and prizes assigned.
-                </AlertDescription>
-              </Alert>
+              {hasCommittedLocally && (
+                <Alert className="bg-green-50 border-green-200">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">
+                    <strong>Already entered!</strong> You've committed this ticket. Come back after the reveal time to check your prize.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-              <TicketCommit
-                lotteryId={lotteryId}
-                ticketIndex={ticketIndex}
-                ticketSecret={secret}
-                commitDeadline={commitDeadlineSeconds}
-                revealTime={revealTimeSeconds}
-              />
+              {!hasCommittedLocally && (
+                <>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      You must enter the draw before the deadline. After the deadline passes,
+                      the lottery will be revealed and prizes assigned.
+                    </AlertDescription>
+                  </Alert>
+
+                  <TicketCommit
+                    lotteryId={lotteryId}
+                    ticketIndex={ticketIndex}
+                    ticketSecret={secret}
+                    commitDeadline={commitDeadlineSeconds}
+                    revealTime={revealTimeSeconds}
+                    onCommitSuccess={() => setHasCommittedLocally(true)}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
         )}
@@ -349,6 +403,13 @@ function TicketPage() {
                     size="lg"
                     className="w-full sm:w-auto"
                     disabled={ticketCommitted === false || ticketRedeemed === true}
+                    title={
+                      ticketCommitted === false 
+                        ? 'You did not commit before the deadline' 
+                        : ticketRedeemed === true 
+                        ? 'Prize already claimed' 
+                        : 'Check your prize'
+                    }
                   >
                     Check Prize
                   </Button>
@@ -356,15 +417,15 @@ function TicketPage() {
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
-                        You did not commit before the deadline. This ticket is not eligible for prizes.
+                        <strong>Not eligible:</strong> You did not commit before the deadline. This ticket is not eligible for prizes.
                       </AlertDescription>
                     </Alert>
                   )}
                   {ticketRedeemed === true && (
                     <Alert>
-                      <AlertCircle className="h-4 w-4" />
+                      <CheckCircle className="h-4 w-4" />
                       <AlertDescription>
-                        This prize has already been claimed.
+                        <strong>Prize already claimed:</strong> This ticket's prize has already been redeemed.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -441,7 +502,8 @@ function TicketPage() {
                                 <Alert variant="destructive">
                                   <AlertCircle className="h-4 w-4" />
                                   <AlertDescription>
-                                    {claimError.message || 'Failed to claim prize. Please try again.'}
+                                    <strong>{formatErrorForDisplay(claimError).title}:</strong>{' '}
+                                    {formatErrorForDisplay(claimError).description}
                                   </AlertDescription>
                                 </Alert>
                               )}
@@ -476,11 +538,21 @@ function TicketPage() {
         )}
 
         {/* Deadline Passed Before Commit */}
-        {!isCommitPhase && !isCommitClosed && !isRevealed && now >= commitDeadlineSeconds && (
+        {!isCommitPhase && !isCommitClosed && !isRevealed && !isFinalized && now >= commitDeadlineSeconds && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              The commit period has ended. You can no longer enter this lottery.
+              <strong>Commit period closed:</strong> The deadline has passed. You can no longer enter this lottery.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Finalized State */}
+        {isFinalized && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Lottery finalized:</strong> This lottery has been completed. All unclaimed prizes have been forfeited to the rollover pool.
             </AlertDescription>
           </Alert>
         )}

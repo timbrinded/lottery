@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { hashSecret } from '@/lib/crypto';
+import { parseContractError } from '@/lib/errors';
 import { useLotteryFactoryAddress } from '@/contracts/hooks';
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
 
@@ -55,24 +56,11 @@ export function useCommitTicket({
   // Combine errors
   useEffect(() => {
     if (writeError) {
-      // Parse contract errors
-      const errorMessage = writeError.message;
-      
-      if (errorMessage.includes('CommitDeadlinePassed')) {
-        setError(new Error('Commit period has ended'));
-      } else if (errorMessage.includes('TicketAlreadyCommitted')) {
-        setError(new Error('This ticket has already been committed'));
-      } else if (errorMessage.includes('InvalidTicketSecret')) {
-        setError(new Error('Invalid ticket secret'));
-      } else if (errorMessage.includes('InvalidTicketIndex')) {
-        setError(new Error('Invalid ticket index'));
-      } else if (errorMessage.includes('User rejected')) {
-        setError(new Error('Transaction cancelled'));
-      } else {
-        setError(writeError);
-      }
+      const parsedMessage = parseContractError(writeError.message);
+      setError(new Error(parsedMessage));
     } else if (confirmError) {
-      setError(confirmError);
+      const parsedMessage = parseContractError(confirmError.message);
+      setError(new Error(parsedMessage));
     } else {
       setError(null);
     }

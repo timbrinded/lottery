@@ -186,11 +186,23 @@ export function TicketDistribution({
                 {/* Ticket Secret (for reference) */}
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Ticket Secret
+                    Ticket Secret (Raw - NOT hashed)
                   </label>
-                  <code className="block text-xs p-2 bg-muted rounded-md break-all">
-                    {ticket.ticketSecret}
-                  </code>
+                  <div className="flex items-start gap-2">
+                    <code className="flex-1 text-xs p-2 bg-muted rounded-md break-all">
+                      {ticket.ticketSecret}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyToClipboard(ticket.ticketSecret)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    This is the actual secret value (not a hash). Participants need this exact value to commit and claim prizes.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -203,7 +215,7 @@ export function TicketDistribution({
         <CardHeader>
           <CardTitle className="text-base">Next Steps</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="space-y-4 text-sm">
           <ol className="list-decimal list-inside space-y-2">
             <li>Save your creator secret in a secure location</li>
             <li>Share ticket URLs or QR codes with participants</li>
@@ -211,6 +223,13 @@ export function TicketDistribution({
             <li>After the commit deadline, you can reveal the lottery using your secret</li>
             <li>Winners can then claim their prizes</li>
           </ol>
+          
+          <Alert>
+            <AlertDescription className="text-xs">
+              <strong>Note about ticket secrets:</strong> The ticket secrets shown above are the actual raw secret values (32-byte hex strings), NOT hashes. 
+              These are what participants need to commit and claim prizes. The system automatically hashes these secrets when storing them on-chain for the commit-reveal pattern.
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
     </div>

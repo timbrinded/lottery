@@ -589,9 +589,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Change Alert color based on urgency: yellow (>6h), red (<6h)
     - _Requirements: 6.9, 6.10_
 
-- [ ] 17. Implement error handling and validation
+- [x] 17. Implement error handling and validation
 
-  - [ ] 17.1 Create validation utilities
+  - [x] 17.1 Create validation utilities
 
     - Create fe/src/lib/validation.ts
     - validatePrizeSum(prizes: bigint[]): boolean - sum > 0
@@ -601,7 +601,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Export all validation functions
     - _Requirements: 12.1_
 
-  - [ ] 17.2 Handle transaction errors in hooks
+  - [x] 17.2 Handle transaction errors in hooks
 
     - Create fe/src/lib/errors.ts with error mapping
     - Map contract errors to user messages:
@@ -616,7 +616,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Use shadcn Toast or Alert to display errors
     - _Requirements: 12.2, 12.5_
 
-  - [ ] 17.3 Add state-based error handling
+  - [x] 17.3 Add state-based error handling
 
     - In ticket.tsx, check lottery.state before showing actions
     - If state === CommitOpen && now > commitDeadline: show "Commit period closed"
@@ -641,9 +641,89 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Monitor conversion funnels
     - _Requirements: General quality_
 
-- [ ] 19. Deploy and verify contracts
+- [ ] 19. Set up local testing environment
 
-  - [ ] 19.1 Configure Arc network in foundry.toml
+  - [x] 19.1 Add local RPC configuration to frontend
+
+    - Create fe/.env.local with LOCAL_MODE=1 flag
+    - Update fe/src/lib/wagmi.ts to detect LOCAL_MODE environment variable
+    - Add localhost chain configuration when LOCAL_MODE=1:
+      - id: 31337 (Anvil default)
+      - name: "Localhost"
+      - rpcUrls: { default: { http: ["http://127.0.0.1:8545"] } }
+      - nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 }
+    - Conditionally use localhost chain in wagmi config when LOCAL_MODE=1
+    - Add console log to indicate local mode is active
+    - _Requirements: 11.2, 11.3_
+
+  - [ ] 19.2 Create Anvil startup script
+
+    - Create contract/scripts/start-anvil.sh bash script
+    - Start Anvil with: `anvil --host 0.0.0.0 --port 8545`
+    - Add optional flags for deterministic accounts: `--mnemonic "test test test test test test test test test test test junk"`
+    - Add flag for block time: `--block-time 2` (2 second blocks for faster testing)
+    - Make script executable: `chmod +x contract/scripts/start-anvil.sh`
+    - Document in README: "Run `./contract/scripts/start-anvil.sh` to start local node"
+    - _Requirements: All_
+
+  - [ ] 19.3 Create local deployment script
+
+    - Create contract/script/DeployLocal.s.sol deployment script
+    - Inherit from forge-std's Script.sol
+    - Deploy LotteryFactory contract in run() function
+    - Log deployed contract address to console
+    - Use vm.broadcast() to send deployment transaction
+    - Save deployment address to contract/.env.local: LOTTERY_FACTORY_ADDRESS_LOCAL
+    - _Requirements: All_
+
+  - [ ] 19.4 Create deployment helper script
+
+    - Create contract/scripts/deploy-local.sh bash script
+    - Source contract/.env.local for private key (Anvil's default account)
+    - Run: `forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+    - Parse output to extract deployed contract address
+    - Write address to fe/.env.local: VITE_LOTTERY_FACTORY_ADDRESS
+    - Make script executable: `chmod +x contract/scripts/deploy-local.sh`
+    - _Requirements: All_
+
+  - [ ] 19.5 Update frontend to use local contract address
+
+    - Update fe/src/contracts/config.ts to read from environment variables
+    - Add conditional logic: if LOCAL_MODE=1, use VITE_LOTTERY_FACTORY_ADDRESS from .env.local
+    - Otherwise use testnet/mainnet addresses
+    - Add validation to ensure contract address is set
+    - Display current network and contract address in Header component (dev mode only)
+    - _Requirements: 11.2_
+
+  - [ ] 19.6 Create end-to-end local testing script
+
+    - Create contract/scripts/test-local.sh bash script
+    - Step 1: Start Anvil in background (with output to anvil.log)
+    - Step 2: Wait 2 seconds for Anvil to start
+    - Step 3: Deploy contracts using deploy-local.sh
+    - Step 4: Start frontend dev server in background: `cd fe && bun run dev`
+    - Step 5: Display instructions: "Local environment ready! Open http://localhost:3000"
+    - Add cleanup on Ctrl+C: kill Anvil and frontend processes
+    - Make script executable: `chmod +x contract/scripts/test-local.sh`
+    - _Requirements: All_
+
+  - [ ] 19.7 Document local testing workflow
+
+    - Update README.md with "Local Development" section
+    - Document three options:
+      1. Manual: Start Anvil → Deploy contracts → Start frontend
+      2. Semi-automated: Run deploy-local.sh → Start frontend
+      3. Fully automated: Run test-local.sh (all-in-one)
+    - Add troubleshooting section for common issues:
+      - Port 8545 already in use (kill existing Anvil)
+      - Contract address not found (re-run deploy-local.sh)
+      - Wallet connection issues (add localhost network to MetaMask)
+    - Document Anvil default accounts and private keys for testing
+    - _Requirements: Documentation_
+
+- [ ] 20. Deploy and verify contracts
+
+  - [ ] 20.1 Configure Arc network in foundry.toml
 
     - Add Arc testnet configuration to [rpc_endpoints]
     - Add Arc mainnet configuration
@@ -651,7 +731,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Configure via_ir = false for compatibility
     - _Requirements: All_
 
-  - [ ] 19.2 Deploy to Arc testnet
+  - [ ] 20.2 Deploy to Arc testnet
 
     - Create deployment script: contract/script/DeployLottery.s.sol
     - Use forge create or forge script to deploy
@@ -660,7 +740,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Test with small prize pools (0.01 ETH)
     - _Requirements: All_
 
-  - [ ] 19.3 Deploy to Arc mainnet
+  - [ ] 20.3 Deploy to Arc mainnet
     - Review deployment script and contract code
     - Deploy: `forge script script/DeployLottery.s.sol --rpc-url arc-mainnet --broadcast --verify`
     - Save address to .env: LOTTERY_FACTORY_ADDRESS_MAINNET
@@ -669,9 +749,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Document in README.md
     - _Requirements: All_
 
-- [ ] 20. Deploy frontend application
+- [ ] 21. Deploy frontend application
 
-  - [ ] 20.1 Configure production environment
+  - [ ] 21.1 Configure production environment
 
     - Create fe/.env.production
     - Set VITE_ARC_CHAIN_ID (Arc mainnet chain ID)
@@ -680,7 +760,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Set VITE_BLOCK_EXPLORER_URL (Arc block explorer)
     - _Requirements: 11.2_
 
-  - [ ] 20.2 Build and deploy
+  - [ ] 21.2 Build and deploy
 
     - Run: `cd fe && bun run build` to create production bundle
     - Test locally: `bun run serve` and verify all features work
@@ -693,7 +773,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Switch to mainnet after testing
     - _Requirements: All_
 
-  - [ ]\* 20.3 Set up monitoring (Optional)
+  - [ ]\* 21.3 Set up monitoring (Optional)
     - Install Sentry: `cd fe && bun add @sentry/react`
     - Configure in main.tsx with DSN
     - Monitor transaction success rates
@@ -706,9 +786,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 **Issue Identified:** The current implementation uses `block.prevrandao` for randomness, but the design document explicitly states that Arc blockchain doesn't support RANDAO (always returns 0). The design specifies using future block hash with a `randomnessBlock` mechanism to prevent creator grinding attacks.
 
-- [x] 21. Fix randomness generation to match design specification
+- [x] 22. Fix randomness generation to match design specification
 
-  - [x] 21.1 Update closeCommitPeriod function implementation
+  - [x] 22.1 Update closeCommitPeriod function implementation
 
     - Modify `closeCommitPeriod` to set `randomnessBlock = block.number + K` (where K = 10-50 blocks)
     - Add event emission: `CommitPeriodClosed(lotteryId, randomnessBlock)`
@@ -717,7 +797,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Test that closeCommitPeriod transitions state from CommitOpen to CommitClosed
     - _Requirements: 4.6, 10.2_
 
-  - [x] 21.2 Update revealLottery to use future block hash
+  - [x] 22.2 Update revealLottery to use future block hash
 
     - Replace `block.prevrandao` with `blockhash(lottery.randomnessBlock)`
     - Add validation: `require(block.number >= lottery.randomnessBlock, "Randomness block not reached")`
@@ -727,14 +807,14 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Add custom errors: `RandomnessBlockNotReached`, `BlockhashExpired`, `BlockhashUnavailable`
     - _Requirements: 4.6, 10.1, 10.2_
 
-  - [x] 21.3 Add randomnessBlock field to Lottery struct
+  - [x] 22.3 Add randomnessBlock field to Lottery struct
 
     - Verify `randomnessBlock` field exists in Lottery struct (should already be there from design)
     - If missing, add: `uint256 randomnessBlock; // Block number for entropy source`
     - Initialize to 0 in createLottery function
     - _Requirements: 4.6_
 
-  - [x] 21.4 Update view functions for randomness status
+  - [x] 22.4 Update view functions for randomness status
 
     - Update `isRevealReady` to check: `state == CommitClosed && block.number >= lottery.randomnessBlock`
     - Add getter function: `getRandomnessBlock(uint256 lotteryId) returns (uint256)`
@@ -742,7 +822,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Return reasons: "Commit period not closed", "Randomness block not reached", "Blockhash expired", "Ready to reveal"
     - _Requirements: 4.6_
 
-  - [x] 21.5 Comprehensive testing for randomness mechanism
+  - [x] 22.5 Comprehensive testing for randomness mechanism
 
     - Test closeCommitPeriod sets randomnessBlock correctly (block.number + K)
     - Test revealLottery reverts if block.number < randomnessBlock
@@ -754,7 +834,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Use vm.prevrandao() to set block hash for testing (if needed)
     - _Requirements: 4.6, 10.1, 10.2_
 
-  - [x] 21.6 Update integration tests for full lifecycle with randomness
+  - [x] 22.6 Update integration tests for full lifecycle with randomness
 
     - Test complete flow: create → commit → closeCommitPeriod → wait for randomnessBlock → reveal → claim
     - Test scenario where creator tries to reveal too early (before randomnessBlock)
@@ -763,7 +843,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Verify prize assignments are different with different block hashes
     - _Requirements: 10.5_
 
-  - [x] 21.7 Update design documentation if needed
+  - [x] 22.7 Update design documentation if needed
     - Review design.md to ensure randomness section is accurate
     - Add note about K value (number of blocks to wait) - recommend 20 blocks (~4 minutes on 12s blocks)
     - Document the 256-block window limitation for blockhash availability

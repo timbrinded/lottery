@@ -3,6 +3,7 @@ import { useWriteContract, useWaitForTransactionReceipt, useBlockNumber } from '
 import { useLotteryFactoryAddress } from '@/contracts/hooks'
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory'
 import { toBytes } from 'viem'
+import { parseContractError, getErrorMessage } from '@/lib/errors'
 
 interface UseRevealLotteryParams {
   lotteryId: bigint
@@ -93,34 +94,11 @@ export function useRevealLottery({
   // Combine errors
   useEffect(() => {
     if (writeError) {
-      // Parse contract errors
-      const errorMessage = writeError.message
-
-      if (errorMessage.includes('InvalidCreatorSecret')) {
-        setError(new Error('Invalid creator secret - does not match commitment'))
-      } else if (errorMessage.includes('RandomnessBlockNotReached')) {
-        setError(
-          new Error(
-            `Randomness block not reached yet. Please wait ${blocksRemaining} more blocks (~${Math.ceil(blocksRemaining * 12 / 60)} minutes)`
-          )
-        )
-      } else if (errorMessage.includes('BlockhashExpired')) {
-        setError(
-          new Error(
-            'Blockhash has expired (>256 blocks old). The lottery can now be refunded to the creator.'
-          )
-        )
-      } else if (errorMessage.includes('UnauthorizedCaller')) {
-        setError(new Error('Only the lottery creator can reveal the lottery'))
-      } else if (errorMessage.includes('InvalidState')) {
-        setError(new Error('Lottery is not in the correct state for reveal'))
-      } else if (errorMessage.includes('User rejected')) {
-        setError(new Error('Transaction cancelled'))
-      } else {
-        setError(writeError)
-      }
+      const message = getErrorMessage(writeError, { blocksRemaining })
+      setError(new Error(message))
     } else if (confirmError) {
-      setError(confirmError)
+      const message = parseContractError(confirmError.message)
+      setError(new Error(message))
     } else {
       setError(null)
     }

@@ -44,7 +44,7 @@ export function ContractNotDeployed() {
             </p>
             <Button variant="outline" size="sm" className="mt-2" asChild>
               <a
-                href="https://github.com/yourusername/mystery-lottery"
+                href="https://github.com/timbrinded/lottery"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center"

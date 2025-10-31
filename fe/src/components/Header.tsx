@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-
 import { useState } from 'react'
 import { Home, Menu, X, Plus, LayoutDashboard, Ticket } from 'lucide-react'
+import NetworkSwitcher from './NetworkSwitcher'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -20,10 +20,12 @@ export default function Header() {
         <h1 className="ml-4 text-xl font-semibold flex-1">
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <span className="text-2xl">🎁</span>
-            <span>Mystery Lottery</span>
+            <span className="hidden sm:inline">Mystery Lottery</span>
           </Link>
         </h1>
-        <div className="mr-4">
+        
+        <div className="flex items-center gap-3">
+          <NetworkSwitcher />
           <ConnectButton />
         </div>
       </header>

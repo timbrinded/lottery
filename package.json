@@ -7,8 +7,10 @@
     "forge:install": "cd contract && forge install",
     "forge:build": "cd contract && forge build",
     "forge:test": "cd contract && forge test",
-    "forge:deploy":"cd contract && forge script script/LotteryFactory.s.sol:LotteryFactoryScript",
-    "fe:dev": "cd fe && bun dev"
+    "forge:deploy": "cd contract && forge script script/LotteryFactory.s.sol:LotteryFactoryScript --rpc-url http://127.0.0.1:8545 --broadcast --private-key $DEPLOYER_PRIVATE_KEY",
+    "forge:deploy:testnet": "cd contract && forge script script/LotteryFactory.s.sol:LotteryFactoryScript --rpc-url https://rpc.testnet.arc.network --broadcast --private-key $DEPLOYER_PRIVATE_KEY --verifier blockscout --verifier-url 'https://testnet.arcscan.app/api/'",
+    "fe:dev": "cd fe && nohup bun dev &",
+    "anvil:start": "nohup anvil --fork-url https://rpc.testnet.arc.network --chain-id 31337 &"
   },
   "devDependencies": {
     "@types/bun": "latest",

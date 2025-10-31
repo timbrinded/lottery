@@ -1,11 +1,18 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { parseEther, formatEther } from 'viem';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { useAccount } from "wagmi";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatUnits, parseUnits } from "viem";
 
 interface PrizeField {
   id: string;
@@ -30,37 +37,48 @@ interface CreateLotteryFormProps {
   isLoading?: boolean;
 }
 
-export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLotteryFormProps) {
+export function CreateLotteryForm({
+  onSubmit,
+  isLoading = false,
+}: CreateLotteryFormProps) {
+  const { chain } = useAccount();
+  const decimals = chain?.nativeCurrency?.decimals ?? 18;
+
   const [prizes, setPrizes] = useState<PrizeField[]>([
-    { id: '1', value: '' },
-    { id: '2', value: '' },
-    { id: '3', value: '' },
+    { id: "1", value: "" },
+    { id: "2", value: "" },
+    { id: "3", value: "" },
   ]);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<CreateLotteryFormData>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<CreateLotteryFormData>({
     defaultValues: {
       numberOfTickets: 10,
       commitDeadlineHours: 24,
-      revealTime: '',
+      revealTime: "",
     },
   });
 
-  const numberOfTickets = watch('numberOfTickets');
-  const commitDeadlineHours = watch('commitDeadlineHours');
-  const revealTime = watch('revealTime');
+  const numberOfTickets = watch("numberOfTickets");
+  const commitDeadlineHours = watch("commitDeadlineHours");
+  const revealTime = watch("revealTime");
 
   const addPrize = () => {
-    setPrizes([...prizes, { id: Date.now().toString(), value: '' }]);
+    setPrizes([...prizes, { id: Date.now().toString(), value: "" }]);
   };
 
   const removePrize = (id: string) => {
     if (prizes.length > 1) {
-      setPrizes(prizes.filter(p => p.id !== id));
+      setPrizes(prizes.filter((p) => p.id !== id));
     }
   };
 
   const updatePrize = (id: string, value: string) => {
-    setPrizes(prizes.map(p => p.id === id ? { ...p, value } : p));
+    setPrizes(prizes.map((p) => (p.id === id ? { ...p, value } : p)));
   };
 
   const calculateTotalPrizePool = (): bigint => {
@@ -68,7 +86,7 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
       return prizes.reduce((sum, prize) => {
         const value = prize.value.trim();
         if (!value || isNaN(parseFloat(value))) return sum;
-        return sum + parseEther(value);
+        return sum + parseUnits(value, decimals);
       }, 0n);
     } catch {
       return 0n;
@@ -79,35 +97,37 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
     // Validate prize sum > 0
     const totalPrizePool = calculateTotalPrizePool();
     if (totalPrizePool === 0n) {
-      return 'Total prize pool must be greater than 0 ETH';
+      return "Total prize pool must be greater than 0 USDC";
     }
 
     // Validate all prizes have values
-    const hasEmptyPrizes = prizes.some(p => !p.value.trim() || isNaN(parseFloat(p.value)));
+    const hasEmptyPrizes = prizes.some(
+      (p) => !p.value.trim() || isNaN(parseFloat(p.value))
+    );
     if (hasEmptyPrizes) {
-      return 'All prize fields must have valid values';
+      return "All prize fields must have valid values";
     }
 
     // Validate tickets > prizes
     if (numberOfTickets < prizes.length) {
-      return 'Number of tickets must be greater than or equal to number of prizes';
+      return "Number of tickets must be greater than or equal to number of prizes";
     }
 
     // Validate deadlines
     if (!revealTime) {
-      return 'Reveal time is required';
+      return "Reveal time is required";
     }
 
     const revealTimestamp = new Date(revealTime).getTime() / 1000;
-    const commitDeadline = revealTimestamp - (commitDeadlineHours * 3600);
+    const commitDeadline = revealTimestamp - commitDeadlineHours * 3600;
     const now = Date.now() / 1000;
 
     if (commitDeadline <= now) {
-      return 'Commit deadline must be in the future';
+      return "Commit deadline must be in the future";
     }
 
     if (revealTimestamp <= commitDeadline) {
-      return 'Reveal time must be after commit deadline';
+      return "Reveal time must be after commit deadline";
     }
 
     return null;
@@ -120,10 +140,12 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
       return;
     }
 
-    const prizeValues = prizes.map(p => parseEther(p.value.trim()));
+    const prizeValues = prizes.map((p) => parseUnits(p.value.trim(), decimals));
     const totalPrizePool = calculateTotalPrizePool();
-    const revealTimestamp = Math.floor(new Date(data.revealTime).getTime() / 1000);
-    const commitDeadline = revealTimestamp - (data.commitDeadlineHours * 3600);
+    const revealTimestamp = Math.floor(
+      new Date(data.revealTime).getTime() / 1000
+    );
+    const commitDeadline = revealTimestamp - data.commitDeadlineHours * 3600;
 
     onSubmit({
       prizeValues,
@@ -149,7 +171,9 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
           {/* Prize Distribution */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">Prize Distribution</Label>
+              <Label className="text-base font-semibold">
+                Prize Distribution
+              </Label>
               <Button
                 type="button"
                 variant="outline"
@@ -160,7 +184,7 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
                 Add Prize
               </Button>
             </div>
-            
+
             {prizes.map((prize, index) => (
               <div key={prize.id} className="flex items-center gap-2">
                 <Label className="w-20">Prize {index + 1}</Label>
@@ -174,7 +198,7 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
                   disabled={isLoading}
                   className="flex-1"
                 />
-                <span className="text-sm text-muted-foreground">ETH</span>
+                <span className="text-sm text-muted-foreground">USDC</span>
                 {prizes.length > 1 && (
                   <Button
                     type="button"
@@ -198,7 +222,7 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
               type="number"
               min="1"
               max="1000"
-              {...register('numberOfTickets', {
+              {...register("numberOfTickets", {
                 required: true,
                 min: 1,
                 max: 1000,
@@ -223,7 +247,7 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
               type="number"
               min="1"
               max="168"
-              {...register('commitDeadlineHours', {
+              {...register("commitDeadlineHours", {
                 required: true,
                 min: 1,
                 max: 168,
@@ -244,11 +268,13 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
             <Input
               id="revealTime"
               type="datetime-local"
-              {...register('revealTime', { required: true })}
+              {...register("revealTime", { required: true })}
               disabled={isLoading}
             />
             {errors.revealTime && (
-              <p className="text-sm text-destructive">Reveal time is required</p>
+              <p className="text-sm text-destructive">
+                Reveal time is required
+              </p>
             )}
           </div>
 
@@ -257,9 +283,12 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
             <Alert>
               <AlertDescription>
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total ETH Required:</span>
+                  <span className="font-semibold">
+                    Total {chain?.nativeCurrency?.symbol ?? "USDC"} Required:
+                  </span>
                   <span className="text-lg font-bold">
-                    {formatEther(totalPrizePool)} ETH
+                    {formatUnits(totalPrizePool, decimals)}{" "}
+                    {chain?.nativeCurrency?.symbol ?? "USDC"}
                   </span>
                 </div>
               </AlertDescription>
@@ -272,7 +301,7 @@ export function CreateLotteryForm({ onSubmit, isLoading = false }: CreateLottery
             className="w-full"
             disabled={isLoading || totalPrizePool === 0n}
           >
-            {isLoading ? 'Creating Lottery...' : 'Create Lottery'}
+            {isLoading ? "Creating Lottery..." : "Create Lottery"}
           </Button>
         </form>
       </CardContent>

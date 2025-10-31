@@ -11,6 +11,7 @@ interface TicketCommitProps {
   ticketSecret: string;
   commitDeadline: number; // Unix timestamp in seconds
   revealTime: number; // Unix timestamp in seconds
+  onCommitSuccess?: () => void; // Optional callback when commit succeeds
 }
 
 export function TicketCommit({
@@ -19,6 +20,7 @@ export function TicketCommit({
   ticketSecret,
   commitDeadline,
   revealTime,
+  onCommitSuccess,
 }: TicketCommitProps) {
   const [isAlreadyCommitted, setIsAlreadyCommitted] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -53,8 +55,9 @@ export function TicketCommit({
       localStorage.setItem(storageKey, 'true');
       setIsAlreadyCommitted(true);
       setShowSuccess(true);
+      onCommitSuccess?.();
     }
-  }, [isSuccess, lotteryId, ticketIndex]);
+  }, [isSuccess, lotteryId, ticketIndex, onCommitSuccess]);
 
   const now = Math.floor(Date.now() / 1000);
   const deadlinePassed = now >= commitDeadline;
