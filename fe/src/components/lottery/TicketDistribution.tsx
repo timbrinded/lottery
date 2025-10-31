@@ -1,11 +1,17 @@
-import { useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Copy, Download, Check } from 'lucide-react';
-import { encodeTicketCode } from '@/lib/crypto';
+import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Copy, Download, Check } from "lucide-react";
+import { encodeTicketCode } from "@/lib/crypto";
 
 interface TicketDistributionProps {
   lotteryId: bigint;
@@ -29,12 +35,8 @@ export function TicketDistribution({
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedCreatorSecret, setCopiedCreatorSecret] = useState(false);
 
-  const generateRedemptionUrl = (ticketIndex: number, ticketSecret: string): string => {
-    const params = new URLSearchParams({
-      lottery: lotteryId.toString(),
-      ticket: ticketIndex.toString(),
-      secret: ticketSecret,
-    });
+  const generateRedemptionUrl = (ticketCode: string): string => {
+    const params = new URLSearchParams({ code: ticketCode });
     return `${window.location.origin}/ticket?${params.toString()}`;
   };
 
@@ -45,7 +47,7 @@ export function TicketDistribution({
       ticketIndex: index,
       ticketSecret: secret,
       ticketCode,
-      redemptionUrl: generateRedemptionUrl(index, secret),
+      redemptionUrl: generateRedemptionUrl(ticketCode),
     };
   });
 
@@ -60,7 +62,7 @@ export function TicketDistribution({
         setTimeout(() => setCopiedCreatorSecret(false), 2000);
       }
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -68,7 +70,7 @@ export function TicketDistribution({
     const data = {
       lotteryId: lotteryId.toString(),
       creatorSecret,
-      tickets: tickets.map(t => ({
+      tickets: tickets.map((t) => ({
         ticketIndex: t.ticketIndex,
         ticketCode: t.ticketCode,
         ticketSecret: t.ticketSecret,
@@ -77,9 +79,11 @@ export function TicketDistribution({
       createdAt: new Date().toISOString(),
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `lottery-${lotteryId}-tickets.json`;
     document.body.appendChild(a);
@@ -99,8 +103,9 @@ export function TicketDistribution({
               <span className="font-bold text-lg">SAVE THIS SECRET!</span>
             </div>
             <p className="text-sm">
-              You'll need this secret to reveal the lottery. If you lose it, the lottery cannot be revealed
-              and all funds will be refunded after 24 hours.
+              You'll need this secret to reveal the lottery. If you lose it, the
+              lottery cannot be revealed and all funds will be refunded after 24
+              hours.
             </p>
             <div className="flex items-center gap-2 p-3 bg-background rounded-md border">
               <code className="flex-1 text-sm font-mono break-all">
@@ -129,7 +134,8 @@ export function TicketDistribution({
             <div>
               <CardTitle>Lottery Created Successfully!</CardTitle>
               <CardDescription>
-                Lottery ID: <Badge variant="secondary">{lotteryId.toString()}</Badge>
+                Lottery ID:{" "}
+                <Badge variant="secondary">{lotteryId.toString()}</Badge>
               </CardDescription>
             </div>
             <Button onClick={downloadAllTickets} variant="outline">
@@ -140,14 +146,17 @@ export function TicketDistribution({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Distribute these ticket codes to participants. Each ticket has a unique redemption URL and QR code.
+            Distribute these ticket codes to participants. Each ticket has a
+            unique redemption URL and QR code.
           </p>
         </CardContent>
       </Card>
 
       {/* Ticket List */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Ticket Codes ({tickets.length} tickets)</h3>
+        <h3 className="text-lg font-semibold">
+          Ticket Codes ({tickets.length} tickets)
+        </h3>
         <div className="grid gap-4 md:grid-cols-2">
           {tickets.map((ticket) => (
             <Card key={ticket.ticketIndex}>
@@ -169,7 +178,9 @@ export function TicketDistribution({
                     <Button
                       size="sm"
                       variant="default"
-                      onClick={() => copyToClipboard(ticket.ticketCode, ticket.ticketIndex)}
+                      onClick={() =>
+                        copyToClipboard(ticket.ticketCode, ticket.ticketIndex)
+                      }
                     >
                       {copiedIndex === ticket.ticketIndex ? (
                         <Check className="h-4 w-4" />
@@ -179,7 +190,8 @@ export function TicketDistribution({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Compact code - participants can paste this directly into the redemption page
+                    Compact code - participants can paste this directly into the
+                    redemption page
                   </p>
                 </div>
 
@@ -198,7 +210,7 @@ export function TicketDistribution({
                   <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground">
                     Advanced Options
                   </summary>
-                  
+
                   <div className="space-y-3 pt-2">
                     {/* Redemption URL */}
                     <div className="space-y-2">
@@ -253,17 +265,25 @@ export function TicketDistribution({
         <CardContent className="space-y-4 text-sm">
           <ol className="list-decimal list-inside space-y-2">
             <li>Save your creator secret in a secure location</li>
-            <li>Share the compact ticket codes or QR codes with participants</li>
+            <li>
+              Share the compact ticket codes or QR codes with participants
+            </li>
             <li>Participants paste the code into the redemption page</li>
             <li>Participants must commit their tickets before the deadline</li>
-            <li>After the commit deadline, you can reveal the lottery using your secret</li>
+            <li>
+              After the commit deadline, you can reveal the lottery using your
+              secret
+            </li>
             <li>Winners can then claim their prizes</li>
           </ol>
-          
+
           <Alert>
             <AlertDescription className="text-xs">
-              <strong>About the ticket codes:</strong> The compact codes shown above encode all ticket information (lottery ID, ticket number, and secret) into a short base58 string. 
-              Participants can simply paste this code into the redemption page - no need for long URLs! The QR codes also contain these compact codes for easy scanning.
+              <strong>About the ticket codes:</strong> The compact codes shown
+              above encode all ticket information (lottery ID, ticket number,
+              and secret) into a short base58 string. Participants can simply
+              paste this code into the redemption page - no need for long URLs!
+              The QR codes also contain these compact codes for easy scanning.
             </AlertDescription>
           </Alert>
         </CardContent>
