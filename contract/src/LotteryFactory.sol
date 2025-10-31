@@ -13,12 +13,11 @@ contract LotteryFactory is ReentrancyGuard {
 
     /**
      * @notice Lottery lifecycle states
-     * @dev State transitions: Pending → CommitOpen → CommitClosed → RevealOpen → Finalized
+     * @dev State transitions: Pending → CommitOpen → RevealOpen → Finalized
      */
     enum LotteryState {
         Pending, // Initial state, not yet active
         CommitOpen, // Accepting ticket commitments
-        CommitClosed, // Commit deadline passed, awaiting reveal
         RevealOpen, // Lottery revealed, prizes claimable
         Finalized // All prizes claimed or forfeited
     }
@@ -36,7 +35,6 @@ contract LotteryFactory is ReentrancyGuard {
         uint256[] prizeValues; // Individual prize amounts in USDC (6 decimals)
         bytes32[] ticketSecretHashes; // Hashes of ticket secrets for verification
         uint256 commitDeadline; // Timestamp when commit period ends
-        uint256 randomnessBlock; // Block number for entropy source (set when commit closes)
         uint256 revealTime; // Timestamp when lottery can be revealed
         uint256 claimDeadline; // Timestamp when claim period ends (24h after reveal)
         uint256 randomSeed; // Generated random seed after reveal
@@ -126,14 +124,8 @@ contract LotteryFactory is ReentrancyGuard {
     /// @notice Thrown when lottery is not in the expected state for the operation
     error InvalidLotteryState();
 
-    /// @notice Thrown when randomness block has not been reached yet
-    error RandomnessBlockNotReached();
-
-    /// @notice Thrown when blockhash has expired (>256 blocks old)
-    error BlockhashExpired();
-
-    /// @notice Thrown when blockhash is unavailable
-    error BlockhashUnavailable();
+    /// @notice Thrown when not enough tickets have been committed for fair randomness
+    error InsufficientCommittedTickets();
 
     // ============ Events ============
 
@@ -153,16 +145,6 @@ contract LotteryFactory is ReentrancyGuard {
         uint256 numberOfTickets,
         uint256 commitDeadline,
         uint256 revealTime
-    );
-
-    /**
-     * @notice Emitted when the commit period is closed
-     * @param lotteryId Lottery identifier
-     * @param randomnessBlock Block number that will be used for entropy
-     */
-    event CommitPeriodClosed(
-        uint256 indexed lotteryId,
-        uint256 randomnessBlock
     );
 
     /**
@@ -348,16 +330,16 @@ contract LotteryFactory is ReentrancyGuard {
 
     /**
      * @notice Check if lottery is ready to be revealed
-     * @dev Returns true if commit period closed, reveal time reached, and randomness block reached
+     * @dev Returns true if commit deadline passed and reveal time reached
      * @param lotteryId The lottery identifier
      * @return bool True if lottery can be revealed
      */
     function isRevealReady(uint256 lotteryId) external view returns (bool) {
         Lottery storage lottery = lotteries[lotteryId];
         return
-            lottery.state == LotteryState.CommitClosed &&
-            block.timestamp >= lottery.revealTime &&
-            block.number >= lottery.randomnessBlock;
+            lottery.state == LotteryState.CommitOpen &&
+            block.timestamp >= lottery.commitDeadline &&
+            block.timestamp >= lottery.revealTime;
     }
 
     /**
@@ -405,15 +387,24 @@ contract LotteryFactory is ReentrancyGuard {
     }
 
     /**
-     * @notice Get the randomness block number for a lottery
-     * @dev Returns the block number that will be used for entropy generation
+     * @notice Get the number of committed tickets for a lottery
+     * @dev Returns count of tickets that have been committed
      * @param lotteryId The lottery identifier
-     * @return randomnessBlock Block number for entropy source (0 if not set yet)
+     * @return committedCount Number of committed tickets
      */
-    function getRandomnessBlock(
+    function getCommittedCount(
         uint256 lotteryId
-    ) external view returns (uint256 randomnessBlock) {
-        return lotteries[lotteryId].randomnessBlock;
+    ) external view returns (uint256 committedCount) {
+        Lottery storage lottery = lotteries[lotteryId];
+        uint256 totalTickets = lottery.ticketSecretHashes.length;
+
+        committedCount = 0;
+        for (uint256 i = 0; i < totalTickets; i++) {
+            if (tickets[lotteryId][i].committed) {
+                committedCount++;
+            }
+        }
+        return committedCount;
     }
 
     /**
@@ -429,18 +420,31 @@ contract LotteryFactory is ReentrancyGuard {
         Lottery storage lottery = lotteries[lotteryId];
 
         // Check state
-        if (lottery.state != LotteryState.CommitClosed) {
-            return (false, "Commit period not closed");
+        if (lottery.state != LotteryState.CommitOpen) {
+            return (false, "Lottery not in commit phase");
         }
 
-        // Check if randomness block has been reached
-        if (block.number < lottery.randomnessBlock) {
-            return (false, "Randomness block not reached");
+        // Check if commit deadline has passed
+        if (block.timestamp < lottery.commitDeadline) {
+            return (false, "Commit period not ended");
         }
 
-        // Check if blockhash has expired
-        if (block.number > lottery.randomnessBlock + 256) {
-            return (false, "Blockhash expired");
+        // Check if reveal time has arrived
+        if (block.timestamp < lottery.revealTime) {
+            return (false, "Reveal time not reached");
+        }
+
+        // Check minimum committed tickets
+        uint256 committedCount = 0;
+        uint256 totalTickets = lottery.ticketSecretHashes.length;
+        for (uint256 i = 0; i < totalTickets; i++) {
+            if (tickets[lotteryId][i].committed) {
+                committedCount++;
+            }
+        }
+
+        if (committedCount < 2) {
+            return (false, "Need at least 2 committed tickets");
         }
 
         // All checks passed
@@ -498,15 +502,6 @@ contract LotteryFactory is ReentrancyGuard {
         // commit < reveal < claim (claim is reveal + 24 hours)
         if (_commitDeadline >= _revealTime) revert InvalidDeadlines();
 
-        // Validate reveal time is within blockhash window
-        // Blockhashes are only available for 256 blocks (~51 minutes at 12s/block)
-        // randomnessBlock is set to block.number + 20 when commit closes
-        // So we need: revealTime <= commitDeadline + (256 - 20) blocks worth of time
-        // Using 40 minutes (2400 seconds) as a safe buffer
-        if (_revealTime > _commitDeadline + 40 minutes) {
-            revert InvalidDeadlines();
-        }
-
         uint256 claimDeadline = _revealTime + 24 hours;
 
         // Generate unique lottery ID and increment counter
@@ -521,7 +516,6 @@ contract LotteryFactory is ReentrancyGuard {
         lottery.prizeValues = _prizeValues;
         lottery.ticketSecretHashes = _ticketSecretHashes;
         lottery.commitDeadline = _commitDeadline;
-        lottery.randomnessBlock = 0; // Set when commit period closes
         lottery.revealTime = _revealTime;
         lottery.claimDeadline = claimDeadline;
         lottery.state = LotteryState.CommitOpen;
@@ -538,35 +532,6 @@ contract LotteryFactory is ReentrancyGuard {
             _commitDeadline,
             _revealTime
         );
-    }
-
-    /**
-     * @notice Update lottery state to CommitClosed if deadline has passed
-     * @dev Can be called by anyone to transition state after commit deadline
-     * @param _lotteryId The lottery identifier
-     */
-    function closeCommitPeriod(uint256 _lotteryId) external {
-        Lottery storage lottery = lotteries[_lotteryId];
-
-        // Verify lottery is in CommitOpen state
-        if (lottery.state != LotteryState.CommitOpen) {
-            revert InvalidLotteryState();
-        }
-
-        // Verify commit deadline has passed
-        if (block.timestamp < lottery.commitDeadline) {
-            revert CommitPeriodNotClosed();
-        }
-
-        // Set future block for randomness (20 blocks ahead, ~4 minutes on 12s blocks)
-        // This prevents creator from grinding/timing attacks
-        lottery.randomnessBlock = block.number + 20;
-
-        // Transition state to CommitClosed
-        lottery.state = LotteryState.CommitClosed;
-
-        // Emit event with randomness block
-        emit CommitPeriodClosed(_lotteryId, lottery.randomnessBlock);
     }
 
     /**
@@ -618,6 +583,7 @@ contract LotteryFactory is ReentrancyGuard {
     /**
      * @notice Reveal the lottery and assign prizes to committed tickets
      * @dev Only callable by lottery creator after reveal time with correct secret
+     * @dev Uses multi-party commit-reveal: combines creator secret with all committed ticket hashes
      * @param _lotteryId The lottery identifier
      * @param _creatorSecret The creator's secret that matches the commitment
      */
@@ -632,24 +598,19 @@ contract LotteryFactory is ReentrancyGuard {
             revert UnauthorizedCaller();
         }
 
-        // Verify lottery is in CommitClosed state
-        if (lottery.state != LotteryState.CommitClosed) {
+        // Verify lottery is in CommitOpen state
+        if (lottery.state != LotteryState.CommitOpen) {
             revert InvalidLotteryState();
+        }
+
+        // Verify commit deadline has passed
+        if (block.timestamp < lottery.commitDeadline) {
+            revert CommitPeriodNotClosed();
         }
 
         // Verify reveal time has arrived
         if (block.timestamp < lottery.revealTime) {
             revert CommitPeriodNotClosed();
-        }
-
-        // Verify randomness block has been reached
-        if (block.number < lottery.randomnessBlock) {
-            revert RandomnessBlockNotReached();
-        }
-
-        // Verify blockhash is still available (within 256 blocks)
-        if (block.number > lottery.randomnessBlock + 256) {
-            revert BlockhashExpired();
         }
 
         // Verify creator secret matches stored commitment hash
@@ -658,25 +619,43 @@ contract LotteryFactory is ReentrancyGuard {
             revert InvalidCreatorSecret();
         }
 
-        // Get future block hash (was unpredictable during commit phase)
-        bytes32 blockEntropy = blockhash(lottery.randomnessBlock);
-
-        // Verify blockhash is available
-        if (blockEntropy == bytes32(0)) {
-            revert BlockhashUnavailable();
+        // Count committed tickets and require minimum for security
+        uint256 committedCount = 0;
+        uint256 totalTickets = lottery.ticketSecretHashes.length;
+        for (uint256 i = 0; i < totalTickets; i++) {
+            if (tickets[_lotteryId][i].committed) {
+                committedCount++;
+            }
         }
 
-        // Generate random seed by combining creator secret with future block hash
-        // This provides unpredictable randomness that neither creator nor miners can manipulate
-        lottery.randomSeed = uint256(
-            keccak256(abi.encodePacked(_creatorSecret, blockEntropy))
-        );
+        // Require at least 2 committed tickets for fair randomness
+        if (committedCount < 2) {
+            revert InsufficientCommittedTickets();
+        }
+
+        // Generate random seed using multi-party commit-reveal
+        // Combine creator secret with all committed ticket hashes
+        bytes memory entropy = abi.encodePacked(_creatorSecret);
+
+        for (uint256 i = 0; i < totalTickets; i++) {
+            if (tickets[_lotteryId][i].committed) {
+                entropy = abi.encodePacked(
+                    entropy,
+                    lottery.ticketSecretHashes[i]
+                );
+            }
+        }
+
+        lottery.randomSeed = uint256(keccak256(entropy));
 
         // Assign prizes to committed tickets using prize-centric algorithm
         _assignPrizes(_lotteryId);
 
         // Transition state to RevealOpen
         lottery.state = LotteryState.RevealOpen;
+
+        // Set claim deadline
+        lottery.claimDeadline = block.timestamp + 24 hours;
 
         // Emit event
         emit LotteryRevealed(_lotteryId, lottery.randomSeed, block.timestamp);
@@ -804,9 +783,14 @@ contract LotteryFactory is ReentrancyGuard {
     function refundLottery(uint256 _lotteryId) external {
         Lottery storage lottery = lotteries[_lotteryId];
 
-        // Verify lottery is in CommitClosed state (not revealed)
-        if (lottery.state != LotteryState.CommitClosed) {
+        // Verify lottery is in CommitOpen state (not revealed)
+        if (lottery.state != LotteryState.CommitOpen) {
             revert InvalidLotteryState();
+        }
+
+        // Verify commit deadline has passed (lottery should have been revealed)
+        if (block.timestamp <= lottery.commitDeadline) {
+            revert CommitPeriodNotClosed();
         }
 
         // Verify 24 hours have passed since reveal time (strictly greater than)

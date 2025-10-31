@@ -11,8 +11,16 @@ export function Countdown({ deadline, className = '' }: CountdownProps) {
 
   useEffect(() => {
     const updateCountdown = () => {
+      // Ensure deadline is a valid number
+      const deadlineNum = typeof deadline === 'number' ? deadline : Number(deadline);
+      if (!isFinite(deadlineNum) || isNaN(deadlineNum)) {
+        setTimeRemaining('Invalid deadline');
+        setUrgency('red');
+        return;
+      }
+
       const now = Math.floor(Date.now() / 1000);
-      const remaining = deadline - now;
+      const remaining = deadlineNum - now;
 
       if (remaining <= 0) {
         setTimeRemaining('Deadline passed');

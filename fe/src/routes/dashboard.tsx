@@ -400,6 +400,16 @@ function LotteryCard({ lottery }: LotteryCardProps) {
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const { hasSecret, getSecret } = useLotterySecrets();
 
+  // Safely format prize pool
+  const prizePoolDisplay = (() => {
+    try {
+      return formatEther(lottery.totalPrizePool || 0n);
+    } catch (error) {
+      console.error('Error formatting prize pool:', error, lottery.totalPrizePool);
+      return '0';
+    }
+  })();
+
   const {
     closeCommit,
     isLoading: isClosing,
@@ -487,7 +497,7 @@ function LotteryCard({ lottery }: LotteryCardProps) {
           <div>
             <CardTitle>Lottery #{lottery.id.toString()}</CardTitle>
             <CardDescription>
-              {formatEther(lottery.totalPrizePool)} USDC Prize Pool
+              {prizePoolDisplay} USDC Prize Pool
             </CardDescription>
           </div>
           <Badge variant={getStateBadgeVariant(state)}>{state}</Badge>

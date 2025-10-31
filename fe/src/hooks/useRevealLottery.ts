@@ -4,6 +4,7 @@ import { useLotteryFactoryAddress } from '@/contracts/hooks'
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory'
 import { toBytes } from 'viem'
 import { parseContractError, getErrorMessage } from '@/lib/errors'
+import { useBlockTime } from '@/hooks/useBlockTime'
 
 interface UseRevealLotteryParams {
   lotteryId: bigint
@@ -41,8 +42,9 @@ export function useRevealLottery({
   const [blocksRemaining, setBlocksRemaining] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
 
-  // Get current block number
+  // Get current block number and block time
   const { data: currentBlock } = useBlockNumber({ watch: true })
+  const { blockTime } = useBlockTime()
 
   // Check if lottery can be revealed
   useEffect(() => {
@@ -134,9 +136,10 @@ export function useRevealLottery({
     }
 
     if (currentBlock < randomnessBlock) {
+      const estimatedMinutes = Math.ceil(blocksRemaining * blockTime / 60);
       setError(
         new Error(
-          `Randomness block not reached yet. Please wait ${blocksRemaining} more blocks (~${Math.ceil(blocksRemaining * 12 / 60)} minutes)`
+          `Randomness block not reached yet. Please wait ${blocksRemaining} more blocks (~${estimatedMinutes} minutes)`
         )
       )
       return

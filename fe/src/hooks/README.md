@@ -1,76 +1,48 @@
-# Lottery Hooks
+# Custom Hooks
 
-## useLotterySecrets
+## useBlockTime
 
-Hook for managing lottery creator secrets in browser local storage.
+Calculates actual block time based on observed blocks from the blockchain.
 
 ### Features
 
-- **Auto-save**: Secrets are automatically saved when a lottery is created
-- **Restore**: Users can restore secrets by pasting them (validates against on-chain commitment)
-- **View**: Access saved secrets from the dashboard
-- **Validation**: Validates secrets against commitment hashes before saving
+- **Chain-specific tracking**: Maintains separate block time data for each chain
+- **Rolling average**: Uses the last 20 blocks to calculate median block time
+- **Outlier filtering**: Removes extreme values (>60s or <0.1s) to handle anomalies
+- **Persistent storage**: Stores data in localStorage for accuracy across sessions
+- **Confidence indicator**: Provides low/medium/high confidence based on sample size
+- **Zero RPC overhead**: Uses existing wagmi `useBlockNumber` hook with watch mode
 
 ### Usage
 
 ```typescript
-import { useLotterySecrets } from '@/hooks/useLotterySecrets';
+import { useBlockTime } from '@/hooks/useBlockTime';
 
 function MyComponent() {
-  const { 
-    saveSecret, 
-    getSecret, 
-    hasSecret, 
-    validateSecret 
-  } = useLotterySecrets();
-
-  // Save a secret
-  saveSecret(lotteryId, '0xa8dfd8593ce604563a7967e0566f3524369fdfebf0a87bd89ab6babb366590b7');
-
-  // Get a secret
-  const secret = getSecret(lotteryId);
-
-  // Check if secret exists
-  const exists = hasSecret(lotteryId);
-
-  // Validate a secret
-  const isValid = validateSecret(secret, commitment);
+  const { blockTime, confidence, sampleSize } = useBlockTime();
+  
+  // blockTime is in seconds (e.g., 12.3)
+  const estimatedTime = remainingBlocks * blockTime;
+  
+  return (
+    <div>
+      Estimated time: {Math.floor(estimatedTime / 60)} minutes
+      {confidence === 'low' && '*'}
+    </div>
+  );
 }
 ```
 
-### Storage Format
+### Return Values
 
-Secrets are stored in local storage under the key `lottery-creator-secrets` as a JSON object:
+- `blockTime`: Average block time in seconds (rounded to 1 decimal)
+- `confidence`: 'low' (<3 blocks), 'medium' (3-9 blocks), 'high' (10+ blocks)
+- `sampleSize`: Number of blocks observed for this chain
 
-```json
-{
-  "1": {
-    "creatorSecret": "0xa8dfd8593ce604563a7967e0566f3524369fdfebf0a87bd89ab6babb366590b7",
-    "ticketSecrets": [
-      "0x...",
-      "0x...",
-      "0x..."
-    ],
-    "createdAt": 1234567890
-  },
-  "2": {
-    "creatorSecret": "0x...",
-    "ticketSecrets": ["0x..."],
-    "createdAt": 1234567891
-  }
-}
-```
+### Implementation Details
 
-### Security Considerations
-
-- Secrets are stored in browser local storage (not encrypted)
-- Users are warned to back up secrets externally
-- Secrets can be restored from external backup if local storage is cleared
-- Validation against on-chain commitment prevents invalid secrets from being saved
-
-### Integration Points
-
-1. **useCreateLottery**: Automatically saves creator secret and ticket secrets after lottery creation
-2. **Dashboard**: Provides "View Secret" / "Restore Secret" button for each lottery
-3. **RestoreSecretModal**: UI for viewing and restoring creator secrets, with button to view tickets
-4. **ViewTicketsModal**: UI for viewing all ticket codes with QR codes and copy functionality
+- Uses **median** instead of mean to handle outliers
+- Stores block numbers as strings to avoid BigInt serialization issues
+- Automatically clears data when switching chains
+- Falls back to 12 seconds when no data is available
+- Keeps only the last 20 blocks to adapt to network changes

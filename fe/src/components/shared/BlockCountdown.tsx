@@ -1,4 +1,5 @@
 import { useBlockNumber } from 'wagmi';
+import { useBlockTime } from '@/hooks/useBlockTime';
 
 interface BlockCountdownProps {
   targetBlock: bigint;
@@ -9,6 +10,7 @@ export function BlockCountdown({ targetBlock, className = '' }: BlockCountdownPr
   const { data: currentBlock } = useBlockNumber({
     watch: true,
   });
+  const { blockTime, confidence } = useBlockTime();
 
   if (!currentBlock) {
     return (
@@ -28,8 +30,8 @@ export function BlockCountdown({ targetBlock, className = '' }: BlockCountdownPr
     );
   }
 
-  // Estimate time: remainingBlocks * 12 seconds (Arc block time)
-  const estimatedSeconds = remainingBlocks * 12;
+  // Estimate time using actual observed block time
+  const estimatedSeconds = remainingBlocks * blockTime;
   const estimatedMinutes = Math.floor(estimatedSeconds / 60);
 
   // Set urgency color
@@ -48,7 +50,7 @@ export function BlockCountdown({ targetBlock, className = '' }: BlockCountdownPr
 
   return (
     <span className={`font-mono font-semibold ${colorClasses[urgency]} ${className}`}>
-      {remainingBlocks} blocks remaining (~{estimatedMinutes} min)
+      {remainingBlocks} blocks remaining (~{estimatedMinutes} min{confidence === 'low' ? '*' : ''})
     </span>
   );
 }
