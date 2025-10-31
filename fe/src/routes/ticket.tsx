@@ -8,6 +8,7 @@ import { TicketCommit } from '@/components/ticket/TicketCommit';
 import { PrizeAnimation } from '@/components/ticket/PrizeAnimation';
 import { ShareButtons } from '@/components/shared/ShareButtons';
 import { useClaimPrize } from '@/hooks/useClaimPrize';
+import { parseTicketInput } from '@/lib/crypto';
 import { AlertCircle, Ticket, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { formatEther } from 'viem';
@@ -32,20 +33,99 @@ export const Route = createFileRoute('/ticket')({
 
 function TicketPage() {
   const { lottery, ticket, secret } = useSearch({ from: '/ticket' });
+  const [ticketInput, setTicketInput] = useState('');
+  const [parseError, setParseError] = useState<string | null>(null);
 
-  // Validate query params
+  const handleSubmit = () => {
+    const parsed = parseTicketInput(ticketInput);
+    if (parsed) {
+      const params = new URLSearchParams({
+        lottery: parsed.lottery,
+        ticket: parsed.ticket,
+        secret: parsed.secret,
+      });
+      window.location.href = `/ticket?${params.toString()}`;
+    } else {
+      setParseError('Invalid ticket format. Please paste your complete ticket URL or code.');
+    }
+  };
+
+  // Show manual entry form if no query params
   if (!lottery || !ticket || !secret) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Invalid ticket link. Please check your URL and try again.
-            {!lottery && <div className="mt-2">Missing lottery ID</div>}
-            {!ticket && <div className="mt-2">Missing ticket index</div>}
-            {!secret && <div className="mt-2">Missing ticket secret</div>}
-          </AlertDescription>
-        </Alert>
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                <Ticket className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Redeem Your Ticket</CardTitle>
+                <CardDescription>
+                  Paste your ticket link or redemption code
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>How to redeem:</strong>
+                <ul className="mt-2 space-y-1 text-sm">
+                  <li>• Paste the complete ticket URL you received</li>
+                  <li>• Or scan the QR code provided by the creator</li>
+                  <li>• Accepted formats:</li>
+                  <li className="ml-4 text-xs font-mono text-muted-foreground">
+                    https://app.com/ticket?lottery=1&ticket=0&secret=0x...
+                  </li>
+                  <li className="ml-4 text-xs font-mono text-muted-foreground">
+                    lottery=1&ticket=0&secret=0x...
+                  </li>
+                  <li className="ml-4 text-xs font-mono text-muted-foreground">
+                    1-0-0x...
+                  </li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Ticket URL or Code
+                </label>
+                <textarea
+                  placeholder="Paste your ticket link here..."
+                  value={ticketInput}
+                  onChange={(e) => {
+                    setTicketInput(e.target.value);
+                    setParseError(null);
+                  }}
+                  className="w-full px-3 py-2 border rounded-md bg-background font-mono text-sm min-h-[100px] resize-y"
+                />
+                {parseError && (
+                  <p className="text-sm text-destructive mt-2">{parseError}</p>
+                )}
+              </div>
+
+              <Button
+                onClick={handleSubmit}
+                disabled={!ticketInput.trim()}
+                className="w-full"
+                size="lg"
+              >
+                View Ticket
+              </Button>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-sm text-muted-foreground text-center">
+                Don't have a ticket? Lottery creators will share ticket links with participants.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -122,10 +202,9 @@ function TicketPage() {
   );
 
   // Parse ticket data - tickets returns [holder, committed, redeemed, prizeAmount]
-  const ticketHolder = ticketData?.[0] as `0x${string}` | undefined;
-  const ticketCommitted = ticketData?.[1] as boolean | undefined;
-  const ticketRedeemed = ticketData?.[2] as boolean | undefined;
-  const prizeAmount = ticketData?.[3] as bigint | undefined;
+  const ticketCommitted = ticketData ? (ticketData[1] as boolean) : undefined;
+  const ticketRedeemed = ticketData ? (ticketData[2] as boolean) : undefined;
+  const prizeAmount = ticketData ? (ticketData[3] as bigint) : undefined;
 
   // Claim prize hook
   const {

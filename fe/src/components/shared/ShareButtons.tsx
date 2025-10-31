@@ -9,7 +9,7 @@ interface ShareButtonsProps {
   lotteryId: string;
 }
 
-export function ShareButtons({ prizeAmount, lotteryId }: ShareButtonsProps) {
+export function ShareButtons({ prizeAmount }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
 
   const prizeInEth = formatEther(prizeAmount);
