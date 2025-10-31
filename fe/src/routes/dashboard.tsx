@@ -11,11 +11,13 @@ import { BlockCountdown } from '@/components/shared/BlockCountdown'
 import { useCloseCommitPeriod } from '@/hooks/useCloseCommitPeriod'
 import { useRevealLottery } from '@/hooks/useRevealLottery'
 import { RevealLotteryModal } from '@/components/lottery/RevealLotteryModal'
+import { RestoreSecretModal } from '@/components/lottery/RestoreSecretModal'
 import { ContractNotDeployed } from '@/components/ContractNotDeployed'
 import { formatEther } from 'viem'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Key } from 'lucide-react'
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory'
+import { useLotterySecrets } from '@/hooks/useLotterySecrets'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -298,6 +300,8 @@ interface LotteryCardProps {
 function LotteryCard({ lottery }: LotteryCardProps) {
   const state = getStateString(lottery.state)
   const [showRevealModal, setShowRevealModal] = useState(false)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const { hasSecret, getSecret } = useLotterySecrets()
   
   const {
     closeCommit,
@@ -324,6 +328,17 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
   const handleReveal = (secret: string) => {
     reveal(secret)
+  }
+
+  const handleRevealClick = () => {
+    const storedSecret = getSecret(lottery.id)
+    if (storedSecret) {
+      // Auto-fill with stored secret
+      reveal(storedSecret)
+    } else {
+      // Show modal to enter secret
+      setShowRevealModal(true)
+    }
   }
 
   // Close modal on success
@@ -386,6 +401,17 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
         {/* Action buttons */}
         <div className="space-y-2">
+          {/* Secret Management Button */}
+          <Button
+            onClick={() => setShowRestoreModal(true)}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            <Key className="mr-2 h-4 w-4" />
+            {hasSecret(lottery.id) ? 'View Secret' : 'Restore Secret'}
+          </Button>
+
           {state === 'CommitOpen' && canClose && (
             <Button
               onClick={closeCommit}
@@ -416,7 +442,7 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
           {state === 'CommitClosed' && canReveal && (
             <Button
-              onClick={() => setShowRevealModal(true)}
+              onClick={handleRevealClick}
               className="w-full"
             >
               Reveal Lottery
@@ -466,6 +492,14 @@ function LotteryCard({ lottery }: LotteryCardProps) {
         onReveal={handleReveal}
         isRevealing={isRevealing}
         error={revealError}
+      />
+
+      {/* Restore Secret Modal */}
+      <RestoreSecretModal
+        open={showRestoreModal}
+        onOpenChange={setShowRestoreModal}
+        lotteryId={lottery.id}
+        creatorCommitment={lottery.creatorCommitment}
       />
     </Card>
   )

@@ -123,6 +123,10 @@ export function TicketDistribution({
                 )}
               </Button>
             </div>
+            <p className="text-xs text-green-600 font-medium">
+              ✓ This secret has been automatically saved to your browser's local storage.
+              You can access it later from the dashboard.
+            </p>
           </div>
         </AlertDescription>
       </Alert>
@@ -264,15 +268,14 @@ export function TicketDistribution({
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <ol className="list-decimal list-inside space-y-2">
-            <li>Save your creator secret in a secure location</li>
+            <li>Your creator secret has been saved to local storage (but back it up externally too!)</li>
             <li>
               Share the compact ticket codes or QR codes with participants
             </li>
             <li>Participants paste the code into the redemption page</li>
             <li>Participants must commit their tickets before the deadline</li>
             <li>
-              After the commit deadline, you can reveal the lottery using your
-              secret
+              After the commit deadline, you can reveal the lottery from the dashboard
             </li>
             <li>Winners can then claim their prizes</li>
           </ol>

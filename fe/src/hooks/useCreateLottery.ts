@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
 import { getLotteryFactoryAddress } from '@/contracts/config';
 import { generateSecret, hashSecret, generateTicketSecrets } from '@/lib/crypto';
+import { useLotterySecrets } from './useLotterySecrets';
 
 interface CreateLotteryParams {
   prizeValues: bigint[];
@@ -30,6 +31,7 @@ export function useCreateLottery(chainId: number): CreateLotteryResult {
   const [creatorSecret, setCreatorSecret] = useState<string | null>(null);
   const [ticketSecrets, setTicketSecrets] = useState<string[] | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const { saveSecret } = useLotterySecrets();
 
   const {
     data: hash,
@@ -75,6 +77,13 @@ export function useCreateLottery(chainId: number): CreateLotteryResult {
       setLotteryId(parsedId);
     }
   }
+
+  // Auto-save creator secret to local storage when lottery is created
+  useEffect(() => {
+    if (lotteryId && creatorSecret) {
+      saveSecret(lotteryId, creatorSecret);
+    }
+  }, [lotteryId, creatorSecret, saveSecret]);
 
   const createLottery = useCallback(
     async (params: CreateLotteryParams) => {
