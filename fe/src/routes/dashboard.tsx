@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useAccount } from 'wagmi'
+import { useAccount, useReadContracts } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useState, useEffect, useMemo } from 'react'
 import { useReadLotteryFactory, useWatchLotteryFactoryEvent, useLotteryFactoryAddress } from '@/contracts/hooks'
@@ -15,6 +15,7 @@ import { ContractNotDeployed } from '@/components/ContractNotDeployed'
 import { formatEther } from 'viem'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
+import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -41,42 +42,96 @@ function DashboardPage() {
   const contractAddress = useLotteryFactoryAddress()
   const [lotteries, setLotteries] = useState<LotteryData[]>([])
   const [filter, setFilter] = useState<'all' | 'active' | 'pending-reveal' | 'waiting-randomness' | 'revealed' | 'finalized'>('all')
-  const [isLoading, setIsLoading] = useState(true)
 
   // Get lottery counter to know how many lotteries exist
-  const { data: lotteryCounter } = useReadLotteryFactory('lotteryCounter', [])
+  const { data: lotteryCounter, isLoading: isCounterLoading } = useReadLotteryFactory('lotteryCounter', [])
 
-  // Fetch all lotteries created by the connected wallet
+  // Build contract calls for all lotteries
+  const lotteryIds = useMemo(() => {
+    if (!lotteryCounter) return []
+    const count = Number(lotteryCounter)
+    const ids = []
+    for (let i = 1; i < count; i++) {
+      ids.push(BigInt(i))
+    }
+    return ids
+  }, [lotteryCounter])
+
+  // Fetch all lottery data in parallel
+  const { data: lotteriesData, isLoading: isLotteriesLoading } = useReadContracts({
+    contracts: lotteryIds.map(id => ({
+      address: contractAddress as `0x${string}`,
+      abi: LOTTERY_FACTORY_ABI as any,
+      functionName: 'lotteries',
+      args: [id],
+    })),
+    query: {
+      enabled: !!contractAddress && lotteryIds.length > 0,
+    },
+  })
+
+  // Fetch ticket counts for each lottery
+  const { data: ticketCountsData } = useReadContracts({
+    contracts: lotteryIds.map(id => ({
+      address: contractAddress as `0x${string}`,
+      abi: LOTTERY_FACTORY_ABI as any,
+      functionName: 'getLotteryTickets',
+      args: [id],
+    })),
+    query: {
+      enabled: !!contractAddress && lotteryIds.length > 0,
+    },
+  })
+
+  // Process lottery data and filter by creator
   useEffect(() => {
-    if (!isConnected || !address || !lotteryCounter) {
-      setIsLoading(false)
+    if (!lotteriesData || !address) {
+      setLotteries([])
       return
     }
 
-    const fetchLotteries = async () => {
-      setIsLoading(true)
-      const userLotteries: LotteryData[] = []
+    const userLotteries: LotteryData[] = []
 
-      // Iterate through all lotteries and filter by creator
-      const count = Number(lotteryCounter)
-      for (let i = 1; i < count; i++) {
-        try {
-          // For now, we'll use a simpler approach - just check if we can read the lottery
-          // In production, you'd want to use event logs for better performance
-          
-          // This is a placeholder - in production you'd fetch from the contract
-          // For now, we'll skip this and show a message
-        } catch (error) {
-          console.error(`Error fetching lottery ${i}:`, error)
+    lotteriesData.forEach((result, index) => {
+      if (result.status === 'success' && result.result) {
+        // Contract returns tuple as array: [creator, creatorCommitment, totalPrizePool, commitDeadline, randomnessBlock, revealTime, claimDeadline, randomSeed, state, createdAt, sponsoredGasPool, sponsoredGasUsed]
+        const lotteryData = result.result as any[]
+        
+        // Check if we have valid data
+        if (!lotteryData || lotteryData.length < 10) {
+          console.warn(`Invalid lottery data for ID ${lotteryIds[index]}`)
+          return
+        }
+
+        const creator = lotteryData[0] as string
+        
+        // Only include lotteries created by the connected user
+        if (creator && creator.toLowerCase() === address.toLowerCase()) {
+          const ticketCount = ticketCountsData?.[index]?.status === 'success' 
+            ? (ticketCountsData[index].result as any[]).length 
+            : 0
+
+          userLotteries.push({
+            id: lotteryIds[index],
+            creator: creator,
+            creatorCommitment: lotteryData[1] as `0x${string}`,
+            totalPrizePool: lotteryData[2] as bigint,
+            numberOfTickets: BigInt(ticketCount),
+            commitDeadline: lotteryData[3] as bigint,
+            revealTime: lotteryData[5] as bigint,
+            claimDeadline: lotteryData[6] as bigint,
+            randomnessBlock: lotteryData[4] as bigint,
+            state: Number(lotteryData[8]),
+            createdAt: lotteryData[9] as bigint,
+          })
         }
       }
+    })
 
-      setLotteries(userLotteries)
-      setIsLoading(false)
-    }
+    setLotteries(userLotteries)
+  }, [lotteriesData, ticketCountsData, address, lotteryIds])
 
-    fetchLotteries()
-  }, [isConnected, address, lotteryCounter])
+  const isLoading = isCounterLoading || isLotteriesLoading
 
   // Watch for new lottery creation events
   useWatchLotteryFactoryEvent('LotteryCreated', (logs) => {
