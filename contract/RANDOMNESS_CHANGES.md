@@ -40,9 +40,9 @@ lottery.randomSeed = uint256(keccak256(entropy));
 - Collusion requires ALL participants + creator (impractical)
 
 **⚠️ Minimum Participants Required:**
-- Requires at least 2 committed tickets for reveal
-- Prevents degenerate cases with insufficient entropy
-- Reverts with `InsufficientCommittedTickets()` if < 2 commits
+- Requires at least 1 committed ticket for reveal
+- Even with 1 commit, creator doesn't know which ticket will commit
+- Reverts with `InsufficientCommittedTickets()` if 0 commits
 
 ### Changes Made
 
@@ -102,7 +102,7 @@ Pending → CommitOpen → RevealOpen → Finalized
 ### Trade-offs
 
 - Slightly weaker than VRF (no cryptographic proof)
-- Requires minimum 2 participants for security
+- Requires minimum 1 participant (creator doesn't know which ticket commits)
 - Not suitable for high-value lotteries (>$10k) - use VRF instead
 
 ### When to Upgrade to VRF

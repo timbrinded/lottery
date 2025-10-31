@@ -443,8 +443,8 @@ contract LotteryFactory is ReentrancyGuard {
             }
         }
 
-        if (committedCount < 2) {
-            return (false, "Need at least 2 committed tickets");
+        if (committedCount < 1) {
+            return (false, "Need at least 1 committed ticket");
         }
 
         // All checks passed
@@ -628,8 +628,8 @@ contract LotteryFactory is ReentrancyGuard {
             }
         }
 
-        // Require at least 2 committed tickets for fair randomness
-        if (committedCount < 2) {
+        // Require at least 1 committed ticket
+        if (committedCount < 1) {
             revert InsufficientCommittedTickets();
         }
 
