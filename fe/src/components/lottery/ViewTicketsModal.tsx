@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,13 +7,40 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Copy, Check, Download } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Copy, Check, Download, ChevronDown, Loader2 } from 'lucide-react';
 import { useCopyToClipboard } from 'usehooks-ts';
-import { QRCodeSVG } from 'qrcode.react';
 import { encodeTicketCode } from '@/lib/crypto';
 import { useLotterySecrets } from '@/hooks/useLotterySecrets';
+import { useReadContracts } from 'wagmi';
+import { useLotteryFactoryAddress } from '@/contracts/hooks';
+import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
+import { formatEther } from 'viem';
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 
 interface ViewTicketsModalProps {
   open: boolean;
@@ -26,6 +53,10 @@ interface TicketData {
   ticketSecret: string;
   ticketCode: string;
   redemptionUrl: string;
+  committed: boolean;
+  holder: string;
+  redeemed: boolean;
+  prizeAmount: bigint;
 }
 
 export function ViewTicketsModal({
@@ -36,6 +67,12 @@ export function ViewTicketsModal({
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [, copy] = useCopyToClipboard();
   const { getSecretData } = useLotterySecrets();
+  const contractAddress = useLotteryFactoryAddress();
+
+  const [sorting, setSorting] = useState<any>([]);
+  const [columnFilters, setColumnFilters] = useState<any>([]);
+  const [columnVisibility, setColumnVisibility] = useState<any>({});
+  const [rowSelection, setRowSelection] = useState({});
 
   const secretData = getSecretData(lotteryId);
   const ticketSecrets = secretData?.ticketSecrets || [];
@@ -46,16 +83,42 @@ export function ViewTicketsModal({
     return `${window.location.origin}/ticket?${params.toString()}`;
   };
 
-  // Generate ticket data from stored secrets
-  const tickets: TicketData[] = ticketSecrets.map((secret, index) => {
-    const ticketCode = encodeTicketCode(lotteryId, index, secret);
-    return {
-      ticketIndex: index,
-      ticketSecret: secret,
-      ticketCode,
-      redemptionUrl: generateRedemptionUrl(ticketCode),
-    };
+  // Fetch ticket commitment data from contract
+  const ticketIndices = useMemo(() => {
+    return ticketSecrets.map((_, index) => index);
+  }, [ticketSecrets]);
+
+  const { data: ticketCommitments, isLoading: isLoadingCommitments } = useReadContracts({
+    contracts: ticketIndices.map((index) => ({
+      address: contractAddress as `0x${string}`,
+      abi: LOTTERY_FACTORY_ABI as any,
+      functionName: 'tickets',
+      args: [lotteryId, BigInt(index)],
+    })),
+    query: {
+      enabled: !!contractAddress && ticketSecrets.length > 0,
+    },
   });
+
+  // Generate ticket data with commitment status
+  const tickets: TicketData[] = useMemo(() => {
+    return ticketSecrets.map((secret, index) => {
+      const ticketCode = encodeTicketCode(lotteryId, index, secret);
+      const commitment = ticketCommitments?.[index];
+      const commitmentData = commitment?.status === 'success' ? (commitment.result as any[]) : null;
+
+      return {
+        ticketIndex: index,
+        ticketSecret: secret,
+        ticketCode,
+        redemptionUrl: generateRedemptionUrl(ticketCode),
+        committed: commitmentData ? commitmentData[1] : false,
+        holder: commitmentData ? commitmentData[0] : '0x0000000000000000000000000000000000000000',
+        redeemed: commitmentData ? commitmentData[2] : false,
+        prizeAmount: commitmentData ? commitmentData[3] : BigInt(0),
+      };
+    });
+  }, [ticketSecrets, ticketCommitments, lotteryId]);
 
   const copyToClipboard = async (text: string, index?: number) => {
     await copy(text);
@@ -64,6 +127,129 @@ export function ViewTicketsModal({
       setTimeout(() => setCopiedIndex(null), 2000);
     }
   };
+
+  // Define table columns
+  const columns: ColumnDef<TicketData>[] = useMemo(
+    () => [
+      {
+        accessorKey: 'ticketIndex',
+        header: '#',
+        cell: ({ row }) => <div className="font-medium">#{row.getValue('ticketIndex')}</div>,
+      },
+      {
+        accessorKey: 'committed',
+        header: 'Status',
+        cell: ({ row }) => {
+          const committed = row.getValue('committed') as boolean;
+          return (
+            <Badge variant={committed ? 'default' : 'secondary'}>
+              {committed ? 'Committed' : 'Not Committed'}
+            </Badge>
+          );
+        },
+        filterFn: (row, id, value) => {
+          if (value === 'all') return true;
+          if (value === 'committed') return row.getValue(id) === true;
+          if (value === 'not-committed') return row.getValue(id) === false;
+          return true;
+        },
+      },
+      {
+        accessorKey: 'holder',
+        header: 'Holder',
+        cell: ({ row }) => {
+          const holder = row.getValue('holder') as string;
+          const committed = row.original.committed;
+          if (!committed || holder === '0x0000000000000000000000000000000000000000') {
+            return <span className="text-muted-foreground text-sm">-</span>;
+          }
+          return (
+            <code className="text-xs">
+              {holder.slice(0, 6)}...{holder.slice(-4)}
+            </code>
+          );
+        },
+      },
+      {
+        accessorKey: 'prizeAmount',
+        header: 'Prize',
+        cell: ({ row }) => {
+          const prizeAmount = row.getValue('prizeAmount') as bigint;
+          const committed = row.original.committed;
+          const redeemed = row.original.redeemed;
+          
+          if (!committed) {
+            return <span className="text-muted-foreground text-sm">-</span>;
+          }
+          
+          if (prizeAmount === BigInt(0)) {
+            return <span className="text-muted-foreground text-sm">Pending</span>;
+          }
+          
+          return (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{formatEther(prizeAmount)} ETH</span>
+              {redeemed && (
+                <Badge variant="outline" className="text-xs">
+                  Claimed
+                </Badge>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'ticketCode',
+        header: 'Ticket Code',
+        cell: ({ row }) => {
+          const code = row.getValue('ticketCode') as string;
+          const index = row.original.ticketIndex;
+          return (
+            <div className="flex items-center gap-2">
+              <code className="text-xs font-mono truncate max-w-[200px]">{code}</code>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={() => copyToClipboard(code, index)}
+              >
+                {copiedIndex === index ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [copiedIndex]
+  );
+
+  const table = useReactTable({
+    data: tickets,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
+    initialState: {
+      pagination: {
+        pageSize: 20,
+      },
+    },
+  });
 
   const downloadAllTickets = () => {
     const data = {
@@ -74,6 +260,8 @@ export function ViewTicketsModal({
         ticketCode: t.ticketCode,
         ticketSecret: t.ticketSecret,
         redemptionUrl: t.redemptionUrl,
+        committed: t.committed,
+        holder: t.holder,
       })),
       exportedAt: new Date().toISOString(),
     };
@@ -91,108 +279,183 @@ export function ViewTicketsModal({
     URL.revokeObjectURL(url);
   };
 
+  const committedCount = tickets.filter((t) => t.committed).length;
+  const notCommittedCount = tickets.length - committedCount;
+  const winnersCount = tickets.filter((t) => t.prizeAmount > BigInt(0)).length;
+  const claimedCount = tickets.filter((t) => t.redeemed).length;
+  const hasResults = tickets.some((t) => t.prizeAmount > BigInt(0));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[90vw] !max-w-[90vw] h-[85vh] !max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle>Lottery Tickets</DialogTitle>
+              <DialogTitle>Ticket Submission Status</DialogTitle>
               <DialogDescription>
-                Lottery ID: {lotteryId.toString()}
+                Lottery ID: {lotteryId.toString()} • {tickets.length} total tickets
               </DialogDescription>
             </div>
             {tickets.length > 0 && (
               <Button onClick={downloadAllTickets} variant="outline" size="sm">
                 <Download className="h-4 w-4 mr-2" />
-                Download All
+                Export
               </Button>
             )}
           </div>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {tickets.length === 0 ? (
-            <>
-              <Alert variant="destructive">
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-semibold">⚠️ Ticket Secrets Not Available</p>
-                    <p className="text-sm">
-                      Ticket secrets were not saved when this lottery was created, or they were
-                      cleared from local storage. You need the original ticket codes that were
-                      generated during creation.
-                    </p>
-                    <p className="text-sm">
-                      If you downloaded the ticket JSON file during creation, you can use that to
-                      retrieve the ticket codes.
-                    </p>
-                  </div>
-                </AlertDescription>
-              </Alert>
+        {tickets.length === 0 ? (
+          <div className="space-y-4">
+            <Alert variant="destructive">
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-semibold">⚠️ Ticket Secrets Not Available</p>
+                  <p className="text-sm">
+                    Ticket secrets were not saved when this lottery was created, or they were
+                    cleared from local storage.
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {/* Stats */}
+            <div className="flex gap-4 flex-wrap">
+              <Badge variant="default">{committedCount} Committed</Badge>
+              <Badge variant="secondary">{notCommittedCount} Not Committed</Badge>
+              {hasResults && (
+                <>
+                  <Badge variant="outline">{winnersCount} Winners</Badge>
+                  <Badge variant="outline">{claimedCount} Claimed</Badge>
+                </>
+              )}
+            </div>
 
-              <Alert>
-                <AlertDescription className="text-sm">
-                  <strong>Note:</strong> Only lotteries created after this update will have
-                  ticket secrets automatically saved. For older lotteries, you'll need the
-                  original ticket codes or JSON export.
-                </AlertDescription>
-              </Alert>
-            </>
-          ) : (
-            <>
-              <Alert>
-                <AlertDescription className="text-sm">
-                  <strong>Ticket Codes ({tickets.length} tickets)</strong> - Share these with
-                  participants. Each code can be pasted directly into the redemption page.
-                </AlertDescription>
-              </Alert>
+            {/* Filters */}
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Filter by ticket number..."
+                value={(table.getColumn('ticketIndex')?.getFilterValue() as string) ?? ''}
+                onChange={(event) =>
+                  table.getColumn('ticketIndex')?.setFilterValue(event.target.value)
+                }
+                className="max-w-xs"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Status Filter <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuCheckboxItem
+                    checked={
+                      (table.getColumn('committed')?.getFilterValue() as string) === undefined
+                    }
+                    onCheckedChange={() => table.getColumn('committed')?.setFilterValue(undefined)}
+                  >
+                    All
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={
+                      (table.getColumn('committed')?.getFilterValue() as string) === 'committed'
+                    }
+                    onCheckedChange={() =>
+                      table.getColumn('committed')?.setFilterValue('committed')
+                    }
+                  >
+                    Committed Only
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={
+                      (table.getColumn('committed')?.getFilterValue() as string) ===
+                      'not-committed'
+                    }
+                    onCheckedChange={() =>
+                      table.getColumn('committed')?.setFilterValue('not-committed')
+                    }
+                  >
+                    Not Committed Only
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {tickets.map((ticket) => (
-                  <Card key={ticket.ticketIndex}>
-                    <CardHeader>
-                      <CardTitle className="text-base">
-                        Ticket #{ticket.ticketIndex + 1}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Ticket Code */}
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">
-                          Ticket Code
-                        </label>
-                        <div className="flex items-center gap-2 p-3 bg-primary/5 border-2 border-primary/20 rounded-lg">
-                          <code className="flex-1 text-sm font-mono font-semibold break-all">
-                            {ticket.ticketCode}
-                          </code>
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() =>
-                              copyToClipboard(ticket.ticketCode, ticket.ticketIndex)
-                            }
-                          >
-                            {copiedIndex === ticket.ticketIndex ? (
-                              <Check className="h-4 w-4" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* QR Code */}
-                      <div className="flex justify-center p-4 bg-white rounded-md border">
-                        <QRCodeSVG value={ticket.ticketCode} size={150} level="M" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+            {/* Table */}
+            {isLoadingCommitments ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              <div className="flex-1 overflow-auto border rounded-md">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                      table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id}>
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                          No tickets found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {table.getRowModel().rows.length} of {table.getFilteredRowModel().rows.length} tickets
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm">
+                  Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

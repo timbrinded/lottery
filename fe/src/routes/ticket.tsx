@@ -102,13 +102,14 @@ function TicketPage() {
   const isFinalized = state === 4;
 
   // Fetch ticket data when revealed (disabled when not revealed or not checked)
+  // Also fetch during commit phase to check if already committed on-chain
   const {
     data: ticketData,
     isLoading: isLoadingTicket,
     refetch: refetchTicket,
   } = useReadLotteryFactory("tickets", [lotteryId, BigInt(ticketIndex)], {
     query: {
-      enabled: isRevealed && isPrizeChecked && !!decodedTicket,
+      enabled: (isRevealed && isPrizeChecked && !!decodedTicket) || (isCommitPhase && !!decodedTicket),
     },
   });
 
@@ -357,17 +358,18 @@ function TicketPage() {
                 <Countdown deadline={commitDeadlineSeconds} />
               </div>
 
-              {hasCommittedLocally && (
+              {/* Check on-chain committed status first, then fall back to localStorage */}
+              {(ticketCommitted === true || hasCommittedLocally) && (
                 <Alert className="bg-green-50 border-green-200">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-800">
-                    <strong>Already entered!</strong> You've committed this
+                    <strong>Entry confirmed!</strong> You've already committed this
                     ticket. Come back after the reveal time to check your prize.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {!hasCommittedLocally && (
+              {ticketCommitted !== true && !hasCommittedLocally && (
                 <>
                   <Alert>
                     <AlertCircle className="h-4 w-4" />

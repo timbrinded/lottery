@@ -55,14 +55,22 @@ export function TicketCommit({
     }
   }, [isSuccess, setIsAlreadyCommitted, onCommitSuccess]);
 
+  // Handle "already committed" error by updating localStorage
+  useEffect(() => {
+    if (error && error.message.includes('already been committed')) {
+      setIsAlreadyCommitted(true);
+      onCommitSuccess?.();
+    }
+  }, [error, setIsAlreadyCommitted, onCommitSuccess]);
+
   const now = Math.floor(Date.now() / 1000);
   const deadlinePassed = now >= commitDeadline;
   const isDisabled = isAlreadyCommitted || deadlinePassed || isLoading;
 
   return (
     <div className="space-y-4">
-      {/* Error Alert */}
-      {error && (
+      {/* Error Alert - Don't show if it's "already committed" since we handle that separately */}
+      {error && !error.message.includes('already been committed') && (
         <Alert variant="destructive">
           <AlertDescription>{error.message}</AlertDescription>
         </Alert>

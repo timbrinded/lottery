@@ -403,6 +403,18 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
         {/* Action buttons */}
         <div className="space-y-2">
+          {/* View Tickets Button */}
+          {hasSecret(lottery.id) && (
+            <Button
+              onClick={() => setShowTicketsModal(true)}
+              variant="outline"
+              size="sm"
+              className="w-full"
+            >
+              View Ticket Status
+            </Button>
+          )}
+
           {/* Secret Management Button */}
           <Button
             onClick={() => setShowRestoreModal(true)}

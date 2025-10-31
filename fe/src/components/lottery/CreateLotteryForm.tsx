@@ -21,7 +21,7 @@ interface PrizeField {
 
 interface CreateLotteryFormData {
   numberOfTickets: number;
-  commitDeadlineHours: number;
+  commitDeadlineMinutes: number;
   revealTime: string;
   prizes: PrizeField[];
 }
@@ -54,18 +54,50 @@ export function CreateLotteryForm({
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateLotteryFormData>({
     defaultValues: {
       numberOfTickets: 10,
-      commitDeadlineHours: 24,
+      commitDeadlineMinutes: 60,
       revealTime: "",
     },
   });
 
   const numberOfTickets = watch("numberOfTickets");
-  const commitDeadlineHours = watch("commitDeadlineHours");
+  const commitDeadlineMinutes = watch("commitDeadlineMinutes");
   const revealTime = watch("revealTime");
+
+  // Preset time options for reveal time
+  const timePresets = [
+    { label: "1 hour", hours: 1 },
+    { label: "6 hours", hours: 6 },
+    { label: "1 day", hours: 24 },
+    { label: "2 days", hours: 48 },
+    { label: "1 week", hours: 168 },
+  ];
+
+  // Preset options for commit deadline
+  const commitDeadlinePresets = [
+    { label: "15 min", minutes: 15 },
+    { label: "30 min", minutes: 30 },
+    { label: "1 hour", minutes: 60 },
+    { label: "6 hours", minutes: 360 },
+    { label: "1 day", minutes: 1440 },
+  ];
+
+  const setPresetTime = (hours: number) => {
+    const now = new Date();
+    now.setHours(now.getHours() + hours);
+    // Format for datetime-local input: YYYY-MM-DDTHH:mm
+    const formatted = now.toISOString().slice(0, 16);
+    // Update react-hook-form state directly
+    setValue("revealTime", formatted, { shouldValidate: true });
+  };
+
+  const setCommitDeadlinePreset = (minutes: number) => {
+    setValue("commitDeadlineMinutes", minutes);
+  };
 
   const addPrize = () => {
     setPrizes([...prizes, { id: Date.now().toString(), value: "" }]);
@@ -119,7 +151,7 @@ export function CreateLotteryForm({
     }
 
     const revealTimestamp = new Date(revealTime).getTime() / 1000;
-    const commitDeadline = revealTimestamp - commitDeadlineHours * 3600;
+    const commitDeadline = revealTimestamp - commitDeadlineMinutes * 60;
     const now = Date.now() / 1000;
 
     if (commitDeadline <= now) {
@@ -145,7 +177,7 @@ export function CreateLotteryForm({
     const revealTimestamp = Math.floor(
       new Date(data.revealTime).getTime() / 1000
     );
-    const commitDeadline = revealTimestamp - data.commitDeadlineHours * 3600;
+    const commitDeadline = revealTimestamp - data.commitDeadlineMinutes * 60;
 
     onSubmit({
       prizeValues,
@@ -239,25 +271,39 @@ export function CreateLotteryForm({
 
           {/* Commit Deadline */}
           <div className="space-y-2">
-            <Label htmlFor="commitDeadlineHours">
-              Commit Deadline (hours before reveal)
+            <Label htmlFor="commitDeadlineMinutes">
+              Commit Deadline (minutes before reveal)
             </Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {commitDeadlinePresets.map((preset) => (
+                <Button
+                  key={preset.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCommitDeadlinePreset(preset.minutes)}
+                  disabled={isLoading}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
             <Input
-              id="commitDeadlineHours"
+              id="commitDeadlineMinutes"
               type="number"
               min="1"
-              max="168"
-              {...register("commitDeadlineHours", {
+              max="10080"
+              {...register("commitDeadlineMinutes", {
                 required: true,
                 min: 1,
-                max: 168,
+                max: 10080,
                 valueAsNumber: true,
               })}
               disabled={isLoading}
             />
-            {errors.commitDeadlineHours && (
+            {errors.commitDeadlineMinutes && (
               <p className="text-sm text-destructive">
-                Commit deadline must be between 1 and 168 hours
+                Commit deadline must be between 1 and 10080 minutes (1 week)
               </p>
             )}
           </div>
@@ -265,6 +311,20 @@ export function CreateLotteryForm({
           {/* Reveal Time */}
           <div className="space-y-2">
             <Label htmlFor="revealTime">Reveal Time</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {timePresets.map((preset) => (
+                <Button
+                  key={preset.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPresetTime(preset.hours)}
+                  disabled={isLoading}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
             <Input
               id="revealTime"
               type="datetime-local"
