@@ -23,8 +23,6 @@ contract LotteryFactoryTest is Test {
         uint256 gasCost
     );
 
-    event CommitPeriodClosed(uint256 indexed lotteryId, uint256 randomnessBlock);
-
     function setUp() public {
         factory = new LotteryFactory();
     }
@@ -53,9 +51,8 @@ contract LotteryFactoryTest is Test {
         // Verify enum values are correctly ordered
         assertEq(uint8(LotteryFactory.LotteryState.Pending), 0);
         assertEq(uint8(LotteryFactory.LotteryState.CommitOpen), 1);
-        assertEq(uint8(LotteryFactory.LotteryState.CommitClosed), 2);
-        assertEq(uint8(LotteryFactory.LotteryState.RevealOpen), 3);
-        assertEq(uint8(LotteryFactory.LotteryState.Finalized), 4);
+        assertEq(uint8(LotteryFactory.LotteryState.RevealOpen), 2);
+        assertEq(uint8(LotteryFactory.LotteryState.Finalized), 3);
     }
 
     // ============ Storage Mapping Tests ============
@@ -67,7 +64,6 @@ contract LotteryFactoryTest is Test {
             bytes32 creatorCommitment,
             uint256 totalPrizePool,
             uint256 commitDeadline,
-            uint256 randomnessBlock,
             uint256 revealTime,
             uint256 claimDeadline,
             uint256 randomSeed,
@@ -147,7 +143,7 @@ contract LotteryFactoryTest is Test {
         assertEq(factory.lotteryCounter(), 2, "Counter should increment to 2");
 
         // Verify lottery data in separate calls to avoid stack too deep
-        (address creator, bytes32 storedCommitment, uint256 storedPrizePool,,,,,,,,,) = factory.lotteries(lotteryId);
+        (address creator, bytes32 storedCommitment, uint256 storedPrizePool,,,,,,,,) = factory.lotteries(lotteryId);
 
         assertEq(creator, address(this), "Creator should be test contract");
         assertEq(storedCommitment, creatorCommitment, "Commitment should match");
@@ -176,7 +172,6 @@ contract LotteryFactoryTest is Test {
             ,
             ,
             uint256 storedCommitDeadline,
-            ,
             uint256 storedRevealTime,
             uint256 storedClaimDeadline,
             ,
@@ -296,25 +291,6 @@ contract LotteryFactoryTest is Test {
         );
     }
 
-    function test_CreateLottery_RevertsOnRevealTimeTooFar() public {
-        bytes32 creatorCommitment = keccak256("creator_secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](2);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        ticketSecretHashes[1] = keccak256("ticket_1");
-
-        uint256[] memory prizeValues = new uint256[](2);
-        prizeValues[0] = 60e6;
-        prizeValues[1] = 40e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 2 hours; // More than 40 minutes after commit
-
-        vm.expectRevert(LotteryFactory.InvalidDeadlines.selector);
-        factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-    }
-
     function test_CreateLottery_RevertsOnEqualDeadlines() public {
         bytes32 creatorCommitment = keccak256("creator_secret");
         bytes32[] memory ticketSecretHashes = new bytes32[](2);
@@ -400,7 +376,7 @@ contract LotteryFactoryTest is Test {
         assertEq(lotteryId, 1, "Lottery ID should be 1");
 
         // Verify stored data
-        (address creator,, uint256 storedPrizePool,,,,,, LotteryFactory.LotteryState state,,,) =
+        (address creator,, uint256 storedPrizePool,,,,, LotteryFactory.LotteryState state,,,) =
             factory.lotteries(lotteryId);
 
         assertEq(creator, address(this), "Creator should match");
@@ -459,7 +435,12 @@ contract LotteryFactoryTest is Test {
         uint256 totalPrize = 175e6;
 
         uint256 lotteryId = factory.createLottery{value: totalPrize}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Test accessor
@@ -481,7 +462,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Test accessor
@@ -504,7 +490,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Test accessor
@@ -525,7 +516,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Test accessor (before reveal)
@@ -546,7 +542,12 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Should be open initially
@@ -566,7 +567,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Should not be ready initially (still in CommitOpen state)
@@ -582,7 +588,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Should not be active initially (not revealed yet)
@@ -610,7 +621,12 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Commit ticket as different user
@@ -638,7 +654,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         address user = address(0x456);
@@ -664,7 +685,12 @@ contract LotteryFactoryTest is Test {
         uint256 commitDeadline = block.timestamp + 1 hours;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            commitDeadline,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Warp past deadline
@@ -688,7 +714,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[1] = 40e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Try to commit with invalid index (out of bounds)
@@ -708,7 +739,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         // Try to commit with wrong secret hash
@@ -727,7 +763,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[0] = 50e6;
 
         uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         address user = address(0x789);
@@ -756,7 +797,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         address user1 = address(0x111);
@@ -800,7 +846,12 @@ contract LotteryFactoryTest is Test {
         prizeValues[2] = 20e6;
 
         uint256 lotteryId = factory.createLottery{value: 100e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, block.timestamp + 1 hours, block.timestamp + 1 hours + 30 minutes, 0
+            creatorCommitment,
+            ticketSecretHashes,
+            prizeValues,
+            block.timestamp + 1 hours,
+            block.timestamp + 1 hours + 30 minutes,
+            0
         );
 
         address user1 = address(0x111);
@@ -820,116 +871,6 @@ contract LotteryFactoryTest is Test {
         assertTrue(committed0, "Ticket 0 should be committed");
         assertFalse(committed1, "Ticket 1 should not be committed");
         assertFalse(committed2, "Ticket 2 should not be committed");
-    }
-
-    // ============ CloseCommitPeriod Tests ============
-
-    function test_CloseCommitPeriod_Success() public {
-        bytes32 creatorCommitment = keccak256("creator_secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 50e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-
-        uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
-        );
-
-        // Verify initial state
-        (,,,,,,,, LotteryFactory.LotteryState stateBefore,,,) = factory.lotteries(lotteryId);
-        assertEq(uint8(stateBefore), uint8(LotteryFactory.LotteryState.CommitOpen), "Should be CommitOpen");
-
-        // Warp past deadline
-        vm.warp(commitDeadline + 1);
-
-        // Close commit period
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-
-        // Verify state changed
-        (,,,,,,,, LotteryFactory.LotteryState stateAfter,,,) = factory.lotteries(lotteryId);
-        assertEq(uint8(stateAfter), uint8(LotteryFactory.LotteryState.CommitClosed), "Should be CommitClosed");
-    }
-
-    function test_CloseCommitPeriod_RevertsBeforeDeadline() public {
-        bytes32 creatorCommitment = keccak256("creator_secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 50e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-
-        uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
-        );
-
-        // Try to close before deadline
-        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-    }
-
-    function test_CloseCommitPeriod_RevertsIfNotCommitOpen() public {
-        bytes32 creatorCommitment = keccak256("creator_secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 50e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-
-        uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
-        );
-
-        // Warp past deadline and close
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-
-        // Try to close again
-        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-    }
-
-    function test_CloseCommitPeriod_CanBeCalledByAnyone() public {
-        bytes32 creatorCommitment = keccak256("creator_secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 50e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-
-        uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, block.timestamp + 1 hours + 30 minutes, 0
-        );
-
-        // Warp past deadline
-        vm.warp(commitDeadline + 1);
-
-        // Call from different address
-        address randomUser = address(0x999);
-        vm.prank(randomUser);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-
-        // Verify state changed
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
-        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitClosed), "Should be CommitClosed");
     }
 
     // ============ Reveal Phase Tests ============
@@ -966,11 +907,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(address(0x3));
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp to reveal time
         vm.warp(revealTime);
@@ -979,7 +917,7 @@ contract LotteryFactoryTest is Test {
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify state changed to RevealOpen
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "Should be RevealOpen");
 
         // Verify random seed was generated
@@ -1021,11 +959,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(address(0x1));
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and warp to reveal
+        // Warp past commit deadline to reveal time
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
 
         // Expect event (we can't predict exact randomSeed, so just check lotteryId)
@@ -1052,15 +987,10 @@ contract LotteryFactoryTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close and warp to reveal
+        // Warp past commit deadline to reveal time
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-        
-        // Roll forward blocks to reach randomnessBlock (20 blocks ahead)
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
+
+        // Warp to reveal time
         vm.warp(revealTime);
 
         // Try to reveal with wrong secret
@@ -1085,18 +1015,15 @@ contract LotteryFactoryTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period but don't warp to reveal time
+        // Warp past commit deadline but don't warp to reveal time
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Try to reveal before reveal time
         vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
         factory.revealLottery(lotteryId, creatorSecret);
     }
 
-    function test_RevealLottery_RevertsIfNotCommitClosed() public {
+    function test_RevealLottery_RevertsIfCommitDeadlineNotPassed() public {
         bytes memory creatorSecret = "secret";
         bytes32 creatorCommitment = keccak256(creatorSecret);
 
@@ -1113,11 +1040,11 @@ contract LotteryFactoryTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Warp to reveal time but don't close commit period
-        vm.warp(revealTime);
+        // Warp to BEFORE commit deadline
+        vm.warp(commitDeadline - 1);
 
-        // Try to reveal while still in CommitOpen state
-        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
+        // Try to reveal while commit deadline hasn't passed - should fail
+        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
         factory.revealLottery(lotteryId, creatorSecret);
     }
 
@@ -1138,11 +1065,8 @@ contract LotteryFactoryTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close and warp to reveal
+        // Warp past commit deadline to reveal time
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
 
         // Try to reveal from different address
@@ -1180,11 +1104,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(address(0x2));
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1210,46 +1131,8 @@ contract LotteryFactoryTest is Test {
         assertEq(rollover, 5e6, "One prize should go to rollover");
     }
 
-    function test_RevealLottery_NoCommitments_AllToRollover() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-
-        bytes32[] memory ticketSecretHashes = new bytes32[](3);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        ticketSecretHashes[1] = keccak256("ticket_1");
-        ticketSecretHashes[2] = keccak256("ticket_2");
-
-        uint256[] memory prizeValues = new uint256[](3);
-        prizeValues[0] = 30e6;
-        prizeValues[1] = 15e6;
-        prizeValues[2] = 5e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 50e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Don't commit any tickets
-        // Close and reveal
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-        vm.warp(revealTime);
-        factory.revealLottery(lotteryId, creatorSecret);
-
-        // Verify all prizes went to rollover pool
-        uint256 rollover = factory.lotteryRolloverPool(lotteryId);
-        assertEq(rollover, 50e6, "All prizes should go to rollover pool");
-
-        // Verify no tickets have prizes
-        for (uint256 i = 0; i < 3; i++) {
-            (,,, uint256 prize) = factory.tickets(lotteryId, i);
-            assertEq(prize, 0, "No ticket should have prize");
-        }
-    }
+    // This test is no longer valid - the new randomness mechanism requires at least 1 committed ticket
+    // The test_RevealLottery_RevertsWithZeroCommits test covers this scenario
 
     function test_RevealLottery_RandomnessGeneration() public {
         bytes memory creatorSecret = "secret";
@@ -1272,23 +1155,244 @@ contract LotteryFactoryTest is Test {
         vm.prank(address(0x1));
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify random seed was generated
         (uint256 randomSeed,) = factory.getLotteryReveal(lotteryId);
+        assertTrue(randomSeed != 0, "Random seed should be non-zero");
+    }
 
-        // Get the randomness block that was set
-        uint256 randomnessBlock = factory.getRandomnessBlock(lotteryId);
-        
-        // Random seed should be keccak256(creatorSecret, blockhash(randomnessBlock))
-        uint256 expectedSeed = uint256(keccak256(abi.encodePacked(creatorSecret, blockhash(randomnessBlock))));
-        assertEq(randomSeed, expectedSeed, "Random seed should match expected value");
+    // ============ Minimum Participant Tests ============
+
+    function test_RevealLottery_RevertsWithZeroCommits() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 30e6;
+        prizeValues[1] = 15e6;
+        prizeValues[2] = 5e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Don't commit any tickets
+        // Warp past commit deadline and try to reveal
+        vm.warp(commitDeadline + 1);
+        vm.warp(revealTime);
+
+        // Should revert with InsufficientCommittedTickets
+        vm.expectRevert(LotteryFactory.InsufficientCommittedTickets.selector);
+        factory.revealLottery(lotteryId, creatorSecret);
+    }
+
+    function test_RevealLottery_SucceedsWithOneCommit() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 30e6;
+        prizeValues[1] = 15e6;
+        prizeValues[2] = 5e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit exactly 1 ticket
+        vm.prank(address(0x1));
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Warp past commit deadline and reveal
+        vm.warp(commitDeadline + 1);
+        vm.warp(revealTime);
+
+        // Should succeed with 1 commit
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify state changed to RevealOpen
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "Should be RevealOpen");
+    }
+
+    function test_RevealLottery_SucceedsWithTwoCommits() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](3);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+        ticketSecretHashes[1] = keccak256("ticket_1");
+        ticketSecretHashes[2] = keccak256("ticket_2");
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 30e6;
+        prizeValues[1] = 15e6;
+        prizeValues[2] = 5e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit exactly 2 tickets
+        vm.prank(address(0x1));
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        vm.prank(address(0x2));
+        factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
+
+        // Warp past commit deadline and reveal
+        vm.warp(commitDeadline + 1);
+        vm.warp(revealTime);
+
+        // Should succeed with 2 commits
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify state changed to RevealOpen
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "Should be RevealOpen");
+    }
+
+    function test_RevealLottery_SucceedsWithManyCommits() public {
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        // Create 15 tickets
+        bytes32[] memory ticketSecretHashes = new bytes32[](15);
+        for (uint256 i = 0; i < 15; i++) {
+            ticketSecretHashes[i] = keccak256(abi.encodePacked("ticket_", i));
+        }
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 30e6;
+        prizeValues[1] = 15e6;
+        prizeValues[2] = 5e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
+
+        uint256 lotteryId = factory.createLottery{value: 50e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit 10 tickets
+        for (uint256 i = 0; i < 10; i++) {
+            vm.prank(address(uint160(i + 1)));
+            factory.commitTicket(lotteryId, i, ticketSecretHashes[i]);
+        }
+
+        // Warp past commit deadline and reveal
+        vm.warp(commitDeadline + 1);
+        vm.warp(revealTime);
+
+        // Should succeed with 10 commits
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Verify state changed to RevealOpen
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "Should be RevealOpen");
+
+        // Verify exactly 3 winners (one per prize)
+        uint256 winnersCount = 0;
+        for (uint256 i = 0; i < 10; i++) {
+            (,,, uint256 prize) = factory.tickets(lotteryId, i);
+            if (prize > 0) {
+                winnersCount++;
+            }
+        }
+        assertEq(winnersCount, 3, "Should have exactly 3 winners");
+    }
+
+    function test_RevealLottery_DeterministicRandomness() public {
+        bytes memory creatorSecret = "deterministic_secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        // Create identical ticket setup
+        bytes32[] memory ticketSecretHashes = new bytes32[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            ticketSecretHashes[i] = keccak256(abi.encodePacked("ticket_", i));
+        }
+
+        uint256[] memory prizeValues = new uint256[](3);
+        prizeValues[0] = 30e6;
+        prizeValues[1] = 15e6;
+        prizeValues[2] = 5e6;
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
+
+        // Create first lottery
+        uint256 lottery1 = factory.createLottery{value: 50e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit same tickets in same order
+        for (uint256 i = 0; i < 5; i++) {
+            vm.prank(address(uint160(i + 1)));
+            factory.commitTicket(lottery1, i, ticketSecretHashes[i]);
+        }
+
+        // Reveal first lottery
+        vm.warp(commitDeadline + 1);
+        vm.warp(revealTime);
+        factory.revealLottery(lottery1, creatorSecret);
+
+        // Record prize assignments from first lottery
+        uint256[] memory prizes1 = new uint256[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            (,,, uint256 prize) = factory.tickets(lottery1, i);
+            prizes1[i] = prize;
+        }
+
+        // Create second identical lottery
+        uint256 lottery2 = factory.createLottery{value: 50e6}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline + 2 hours, revealTime + 2 hours, 0
+        );
+
+        // Commit same tickets in same order
+        for (uint256 i = 0; i < 5; i++) {
+            vm.prank(address(uint160(i + 1)));
+            factory.commitTicket(lottery2, i, ticketSecretHashes[i]);
+        }
+
+        // Reveal second lottery
+        vm.warp(commitDeadline + 2 hours + 1);
+        vm.warp(revealTime + 2 hours);
+        factory.revealLottery(lottery2, creatorSecret);
+
+        // Record prize assignments from second lottery
+        uint256[] memory prizes2 = new uint256[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            (,,, uint256 prize) = factory.tickets(lottery2, i);
+            prizes2[i] = prize;
+        }
+
+        // Verify prize assignments match exactly
+        for (uint256 i = 0; i < 5; i++) {
+            assertEq(prizes1[i], prizes2[i], "Prize assignments should be deterministic");
+        }
     }
 
     // ============ Primary Use Case Test: Few Prizes, Many Tickets ============
@@ -1358,11 +1462,8 @@ contract LotteryFactoryTest is Test {
             factory.commitTicket(lotteryId, i, ticketSecretHashes[i]);
         }
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1415,11 +1516,8 @@ contract LotteryFactoryTest is Test {
             factory.commitTicket(lotteryId, i, ticketSecretHashes[i]);
         }
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1486,11 +1584,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user3);
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1548,11 +1643,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1604,11 +1696,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(winner);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1648,11 +1737,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(winner);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1696,11 +1782,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user1);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1735,11 +1818,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(winner);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1777,11 +1857,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(winner);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1815,11 +1892,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1854,11 +1928,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(address(0x1));
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1891,11 +1962,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1928,11 +1996,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -1999,11 +2064,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -2062,11 +2124,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user3);
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -2130,11 +2189,8 @@ contract LotteryFactoryTest is Test {
         vm.prank(user2);
         factory.commitTicket(lotteryId, 1, ticketSecretHashes[1]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -2236,15 +2292,12 @@ contract LotteryFactoryRefundTest is Test {
         vm.prank(user1);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
-        // Verify state is CommitClosed
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
-        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitClosed), "State should be CommitClosed");
+        // Verify state is still CommitOpen (no intermediate state)
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.CommitOpen), "State should be CommitOpen");
 
         // Warp past reveal time + 24 hours (refund window)
         vm.warp(revealTime + 24 hours + 1);
@@ -2255,7 +2308,7 @@ contract LotteryFactoryRefundTest is Test {
         factory.refundLottery(lotteryId);
 
         // Verify state is Finalized
-        (,,,,,,,, LotteryFactory.LotteryState finalState,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState finalState,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(finalState), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
 
         // Verify creator received refund
@@ -2286,11 +2339,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp past refund window
         vm.warp(revealTime + 24 hours + 1);
@@ -2303,9 +2353,9 @@ contract LotteryFactoryRefundTest is Test {
     }
 
     /**
-     * @notice Test refund reverts if lottery is not in CommitClosed state
+     * @notice Test refund reverts if commit deadline hasn't passed
      */
-    function test_RefundLottery_RevertsIfNotCommitClosed() public {
+    function test_RefundLottery_RevertsIfCommitDeadlineNotPassed() public {
         bytes memory creatorSecret = "my_secret_123";
         bytes32 creatorCommitment = keccak256(creatorSecret);
 
@@ -2322,8 +2372,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Try to refund while still in CommitOpen state
-        vm.expectRevert(LotteryFactory.InvalidLotteryState.selector);
+        // Try to refund before commit deadline passes
+        vm.expectRevert(LotteryFactory.CommitPeriodNotClosed.selector);
         factory.refundLottery(lotteryId);
     }
 
@@ -2347,11 +2397,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Try to refund immediately after reveal time (before 24 hours)
         vm.warp(revealTime);
@@ -2389,16 +2436,13 @@ contract LotteryFactoryRefundTest is Test {
         vm.prank(user1);
         factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
 
-        // Close commit period and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify state is RevealOpen
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "State should be RevealOpen");
 
         // Try to refund after reveal - should revert
@@ -2431,11 +2475,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp past refund window
         vm.warp(revealTime + 24 hours + 1);
@@ -2491,11 +2532,8 @@ contract LotteryFactoryRefundTest is Test {
         vm.prank(user3);
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp past refund window
         vm.warp(revealTime + 24 hours + 1);
@@ -2508,7 +2546,7 @@ contract LotteryFactoryRefundTest is Test {
         assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive full refund");
 
         // Verify state is Finalized
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
     }
 
@@ -2532,11 +2570,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp to exactly 24 hours after reveal time (should still revert - needs to be AFTER)
         vm.warp(revealTime + 24 hours);
@@ -2548,7 +2583,7 @@ contract LotteryFactoryRefundTest is Test {
         factory.refundLottery(lotteryId);
 
         // Verify state is Finalized
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
     }
 
@@ -2572,11 +2607,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp past refund window and refund
         vm.warp(revealTime + 24 hours + 1);
@@ -2614,11 +2646,8 @@ contract LotteryFactoryRefundTest is Test {
             creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
         );
 
-        // Close commit period
+        // Warp past commit deadline
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Warp by fuzzed time delay
         vm.warp(revealTime + timeDelay);
@@ -2631,7 +2660,7 @@ contract LotteryFactoryRefundTest is Test {
         assertEq(creatorBalanceAfter, creatorBalanceBefore, "Creator should receive full refund");
 
         // Verify state is Finalized
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
     }
 }
@@ -2640,8 +2669,6 @@ contract LotteryFactoryRefundTest is Test {
 
 contract LotteryFactoryIntegrationTest is Test {
     LotteryFactory public factory;
-
-    event CommitPeriodClosed(uint256 indexed lotteryId, uint256 randomnessBlock);
 
     event LotteryCreated(
         uint256 indexed lotteryId,
@@ -2719,16 +2746,13 @@ contract LotteryFactoryIntegrationTest is Test {
 
         // Step 3: Close commit period
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
 
         // Step 4: Reveal lottery
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
         // Verify state is RevealOpen
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "State should be RevealOpen");
 
         // Step 5: Claim all prizes
@@ -2751,7 +2775,7 @@ contract LotteryFactoryIntegrationTest is Test {
         factory.finalizeLottery(lotteryId);
 
         // Verify state is Finalized
-        (,,,,,,,, LotteryFactory.LotteryState finalState,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState finalState,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(finalState), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
     }
 
@@ -2787,11 +2811,8 @@ contract LotteryFactoryIntegrationTest is Test {
             factory.commitTicket(lotteryId, i, ticketSecretHashes[i]);
         }
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -2840,11 +2861,8 @@ contract LotteryFactoryIntegrationTest is Test {
         vm.prank(address(0x2));
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -2912,11 +2930,8 @@ contract LotteryFactoryIntegrationTest is Test {
         vm.prank(address(0x1));
         factory.commitTicket(lottery1, 0, tickets1[0]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(block.timestamp + 1 hours + 1);
-        factory.closeCommitPeriod(lottery1);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(block.timestamp + 1 hours);
         factory.revealLottery(lottery1, "secret1");
 
@@ -2983,11 +2998,8 @@ contract LotteryFactoryIntegrationTest is Test {
         vm.prank(address(0x3));
         factory.commitTicket(lotteryId, 2, ticketSecretHashes[2]);
 
-        // Close and reveal
+        // Warp past commit deadline and reveal
         vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
         vm.warp(revealTime);
         factory.revealLottery(lotteryId, creatorSecret);
 
@@ -3014,352 +3026,7 @@ contract LotteryFactoryIntegrationTest is Test {
         assertGt(rollover, 0, "Unclaimed prizes should go to rollover");
 
         // Verify state is Finalized
-        (,,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
+        (,,,,,,, LotteryFactory.LotteryState state,,,) = factory.lotteries(lotteryId);
         assertEq(uint8(state), uint8(LotteryFactory.LotteryState.Finalized), "State should be Finalized");
-    }
-
-    // ============ Randomness Mechanism Tests (Task 21.5) ============
-
-    function test_CloseCommitPeriod_SetsRandomnessBlock() public {
-        bytes32 creatorCommitment = keccak256("secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Record current block number
-        uint256 currentBlock = block.number;
-
-        // Warp past deadline and close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Verify randomnessBlock was set to currentBlock + 20
-        uint256 randomnessBlock = factory.getRandomnessBlock(lotteryId);
-        assertEq(randomnessBlock, currentBlock + 20, "RandomnessBlock should be set to block.number + 20");
-    }
-
-    function test_CloseCommitPeriod_EmitsEventWithRandomnessBlock() public {
-        bytes32 creatorCommitment = keccak256("secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        uint256 currentBlock = block.number;
-
-        // Warp past deadline
-        vm.warp(commitDeadline + 1);
-
-        // Expect CommitPeriodClosed event with randomnessBlock
-        vm.expectEmit(true, false, false, true);
-        emit CommitPeriodClosed(lotteryId, currentBlock + 20);
-        
-        factory.closeCommitPeriod(lotteryId);
-    }
-
-    function test_RevealLottery_RevertsIfRandomnessBlockNotReached() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Warp to reveal time but DON'T roll blocks forward
-        vm.warp(revealTime);
-
-        // Try to reveal - should revert because randomnessBlock not reached
-        vm.expectRevert(LotteryFactory.RandomnessBlockNotReached.selector);
-        factory.revealLottery(lotteryId, creatorSecret);
-    }
-
-    function test_RevealLottery_RevertsIfBlockhashExpired() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Roll forward MORE than 256 blocks past randomnessBlock
-        vm.roll(block.number + 20 + 257);
-        vm.warp(revealTime);
-
-        // Try to reveal - should revert because blockhash expired
-        vm.expectRevert(LotteryFactory.BlockhashExpired.selector);
-        factory.revealLottery(lotteryId, creatorSecret);
-    }
-
-    function test_RevealLottery_SucceedsWhenRandomnessBlockReached() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Commit ticket
-        vm.prank(address(0x1));
-        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
-
-        // Close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Roll forward past randomnessBlock (need to be at least randomnessBlock + 1)
-        uint256 randomnessBlock = factory.getRandomnessBlock(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(randomnessBlock + 1);
-        vm.warp(revealTime);
-
-        // Should succeed
-        factory.revealLottery(lotteryId, creatorSecret);
-
-        // Verify state changed
-        (LotteryFactory.LotteryState state,,,,) = factory.getLotteryStatus(lotteryId);
-        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "State should be RevealOpen");
-    }
-
-    function test_RevealLottery_SucceedsWithinBlockhashWindow() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Commit ticket
-        vm.prank(address(0x1));
-        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
-
-        // Close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Roll forward to randomnessBlock + 256 (still within window)
-        uint256 randomnessBlock = factory.getRandomnessBlock(lotteryId);
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(randomnessBlock + 256);
-        vm.warp(revealTime);
-
-        // Should succeed
-        factory.revealLottery(lotteryId, creatorSecret);
-
-        // Verify state changed
-        (LotteryFactory.LotteryState state,,,,) = factory.getLotteryStatus(lotteryId);
-        assertEq(uint8(state), uint8(LotteryFactory.LotteryState.RevealOpen), "State should be RevealOpen");
-    }
-
-    function test_RevealLottery_DifferentBlockHashesDifferentSeeds() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-
-        // Create two identical lotteries
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lottery1 = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        uint256 lottery2 = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Commit tickets for both
-        vm.prank(address(0x1));
-        factory.commitTicket(lottery1, 0, ticketSecretHashes[0]);
-        vm.prank(address(0x2));
-        factory.commitTicket(lottery2, 0, ticketSecretHashes[0]);
-
-        // Close both commit periods
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lottery1);
-        vm.roll(block.number + 1); // Advance block so lottery2 has different randomnessBlock
-        factory.closeCommitPeriod(lottery2);
-
-        // Reveal lottery1 with one block hash
-        vm.prevrandao(bytes32(uint256(11111)));
-        vm.roll(block.number + 20);
-        vm.warp(revealTime);
-        factory.revealLottery(lottery1, creatorSecret);
-
-        // Reveal lottery2 with different block hash
-        vm.prevrandao(bytes32(uint256(22222)));
-        vm.roll(block.number + 1);
-        factory.revealLottery(lottery2, creatorSecret);
-
-        // Get random seeds
-        (uint256 seed1,) = factory.getLotteryReveal(lottery1);
-        (uint256 seed2,) = factory.getLotteryReveal(lottery2);
-
-        // Seeds should be different
-        assertTrue(seed1 != seed2, "Different block hashes should produce different seeds");
-    }
-
-    function test_RevealLottery_SameSecretAndBlockHashSameSeed() public {
-        bytes memory creatorSecret = "secret";
-        bytes32 creatorCommitment = keccak256(creatorSecret);
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Commit ticket
-        vm.prank(address(0x1));
-        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
-
-        // Close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Get randomness block
-        uint256 randomnessBlock = factory.getRandomnessBlock(lotteryId);
-
-        // Roll forward and reveal
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-        vm.warp(revealTime);
-        factory.revealLottery(lotteryId, creatorSecret);
-
-        // Get the seed
-        (uint256 actualSeed,) = factory.getLotteryReveal(lotteryId);
-
-        // Calculate expected seed manually
-        bytes32 blockHash = blockhash(randomnessBlock);
-        uint256 expectedSeed = uint256(keccak256(abi.encodePacked(creatorSecret, blockHash)));
-
-        // Should match
-        assertEq(actualSeed, expectedSeed, "Seed should be deterministic");
-    }
-
-    function test_CanRevealNow_ReturnsCorrectStatus() public {
-        bytes32 creatorCommitment = keccak256("secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Before closing commit period
-        (bool canReveal, string memory reason) = factory.canRevealNow(lotteryId);
-        assertFalse(canReveal, "Should not be able to reveal before commit closed");
-        assertEq(reason, "Commit period not closed", "Reason should indicate commit not closed");
-
-        // After closing but before randomness block
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-        (canReveal, reason) = factory.canRevealNow(lotteryId);
-        assertFalse(canReveal, "Should not be able to reveal before randomness block");
-        assertEq(reason, "Randomness block not reached", "Reason should indicate randomness block not reached");
-
-        // After randomness block reached
-        vm.prevrandao(bytes32(uint256(12345)));
-        vm.roll(block.number + 21);
-        (canReveal, reason) = factory.canRevealNow(lotteryId);
-        assertTrue(canReveal, "Should be able to reveal after randomness block");
-        assertEq(reason, "Ready to reveal", "Reason should indicate ready");
-
-        // After blockhash expired
-        vm.roll(block.number + 257);
-        (canReveal, reason) = factory.canRevealNow(lotteryId);
-        assertFalse(canReveal, "Should not be able to reveal after blockhash expired");
-        assertEq(reason, "Blockhash expired", "Reason should indicate blockhash expired");
-    }
-
-    function test_IsRevealReady_ChecksRandomnessBlock() public {
-        bytes32 creatorCommitment = keccak256("secret");
-        bytes32[] memory ticketSecretHashes = new bytes32[](1);
-        ticketSecretHashes[0] = keccak256("ticket_0");
-        uint256[] memory prizeValues = new uint256[](1);
-        prizeValues[0] = 10e6;
-
-        uint256 commitDeadline = block.timestamp + 1 hours;
-        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
-
-        uint256 lotteryId = factory.createLottery{value: 10e6}(
-            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
-        );
-
-        // Close commit period
-        vm.warp(commitDeadline + 1);
-        factory.closeCommitPeriod(lotteryId);
-
-        // Warp to reveal time but don't roll blocks
-        vm.warp(revealTime);
-        assertFalse(factory.isRevealReady(lotteryId), "Should not be ready before randomness block");
-
-        // Roll to randomness block
-        vm.roll(block.number + 21);
-        assertTrue(factory.isRevealReady(lotteryId), "Should be ready after randomness block");
     }
 }

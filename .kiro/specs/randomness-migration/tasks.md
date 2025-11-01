@@ -6,22 +6,22 @@ This plan covers updating tests, frontend, and documentation to support the new 
 
 ## Tasks
 
-- [ ] 1. Update smart contract tests
+- [-] 1. Update smart contract tests
 
-  - [ ] 1.1 Fix state enum value tests
+  - [x] 1.1 Fix state enum value tests
     - Update enum assertions in test file
     - Change: CommitClosed (2) → removed, RevealOpen (3→2), Finalized (4→3)
     - Verify all state comparisons use correct values
     - _Requirements: 1.1_
 
-  - [ ] 1.2 Remove closeCommitPeriod tests
+  - [x] 1.2 Remove closeCommitPeriod tests
     - Delete `test_CloseCommitPeriod_Success()`
     - Delete `test_CloseCommitPeriod_RevertsIfNotCommitOpen()`
     - Delete `test_CloseCommitPeriod_RevertsIfDeadlineNotPassed()`
     - Remove any helper functions only used by these tests
     - _Requirements: 1.5_
 
-  - [ ] 1.3 Update reveal tests to remove closeCommitPeriod calls
+  - [x] 1.3 Update reveal tests to remove closeCommitPeriod calls
     - Find all tests that call `factory.closeCommitPeriod()`
     - Remove these calls and associated `vm.roll()` for randomness block
     - Update state assertions from CommitClosed to CommitOpen
@@ -29,7 +29,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Verify tests still pass with direct reveal after commit deadline
     - _Requirements: 1.3_
 
-  - [ ] 1.4 Add minimum participant tests
+  - [x] 1.4 Add minimum participant tests
     - Create `test_RevealLottery_RevertsWithZeroCommits()` - verify revert with 0 commits
     - Create `test_RevealLottery_SucceedsWithOneCommit()` - verify success with exactly 1 commit
     - Create `test_RevealLottery_SucceedsWithTwoCommits()` - verify success with 2 commits
@@ -37,7 +37,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Verify InsufficientCommittedTickets error is thrown only with 0 commits
     - _Requirements: 1.4_
 
-  - [ ] 1.5 Add randomness determinism test
+  - [x] 1.5 Add randomness determinism test
     - Create `test_RevealLottery_DeterministicRandomness()`
     - Create lottery, commit same tickets in same order
     - Reveal and record prize assignments
@@ -45,14 +45,14 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Reveal and verify prize assignments match exactly
     - _Requirements: 1.3_
 
-  - [ ] 1.6 Update refund tests
+  - [x] 1.6 Update refund tests
     - Change state checks from CommitClosed to CommitOpen
     - Update `test_RefundLottery_RevertsIfNotCommitClosed()` name and logic
     - Verify refund still works if creator doesn't reveal
     - Update test descriptions and comments
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 1.7 Run full test suite and fix any remaining issues
+  - [x] 1.7 Run full test suite and fix any remaining issues
     - Execute `forge test` and verify all tests pass
     - Fix any remaining CommitClosed references
     - Update test comments and documentation
