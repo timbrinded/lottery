@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 /**
  * @title LotteryFactory
@@ -9,6 +10,11 @@ import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
  * @dev Implements time-locked mystery lotteries with prize cascade and gasless claiming
  */
 contract LotteryFactory is ReentrancyGuard {
+    // ============ Constants ============
+    
+    /// @notice USDC token address on Arc testnet
+    address public constant USDC = 0xb764428a29EAEbe8e2301F5924746f818B331F5A;
+    
     // ============ Enums ============
 
     /**
@@ -631,23 +637,38 @@ contract LotteryFactory is ReentrancyGuard {
         // Using a fixed estimate for simplicity: 50,000 gas * current gas price
         uint256 gasCost = 50000 * tx.gasprice;
 
-        // Calculate net prize (gross - gas)
-        // Note: If prize is 0 (losing ticket), this will revert with underflow
-        uint256 netPrize = grossPrize - gasCost;
+        // Calculate net prize and gas refund
+        uint256 netPrize;
+        uint256 actualGasRefund;
+
+        if (grossPrize > gasCost) {
+            // Normal case: prize covers gas cost
+            netPrize = grossPrize - gasCost;
+            actualGasRefund = gasCost;
+        } else {
+            // Edge case: prize is less than gas cost
+            // Winner gets nothing, relayer gets the full prize as partial gas refund
+            netPrize = 0;
+            actualGasRefund = grossPrize;
+        }
 
         // Mark ticket as redeemed (state update before external calls)
         ticket.redeemed = true;
 
-        // Transfer net prize to winner
-        (bool successWinner,) = payable(msg.sender).call{value: netPrize}("");
-        require(successWinner, "Transfer to winner failed");
+        // Transfer net prize to winner (if any)
+        if (netPrize > 0) {
+            (bool successWinner,) = payable(msg.sender).call{value: netPrize}("");
+            require(successWinner, "Transfer to winner failed");
+        }
 
         // Refund gas cost to tx.origin (relayer/caller)
-        (bool successRelayer,) = payable(tx.origin).call{value: gasCost}("");
-        require(successRelayer, "Gas refund failed");
+        if (actualGasRefund > 0) {
+            (bool successRelayer,) = payable(tx.origin).call{value: actualGasRefund}("");
+            require(successRelayer, "Gas refund failed");
+        }
 
         // Emit event with gross, net, and gas amounts
-        emit PrizeClaimed(_lotteryId, _ticketIndex, msg.sender, grossPrize, netPrize, gasCost);
+        emit PrizeClaimed(_lotteryId, _ticketIndex, msg.sender, grossPrize, netPrize, actualGasRefund);
     }
 
     /**

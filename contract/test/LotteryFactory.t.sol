@@ -2142,13 +2142,75 @@ contract LotteryFactoryTest is Test {
         // Verify we found a losing ticket
         assertLt(losingTicket, 3, "Should have found at least one losing ticket");
 
-        // Try to claim the losing ticket - should revert with arithmetic underflow
-        // because netPrize = 0 - gasCost will underflow
+        // Claim the losing ticket - should succeed but transfer nothing
         address loser = address(uint160(losingTicket + 1));
+        uint256 balanceBefore = loser.balance;
+        
         vm.txGasPrice(10 gwei); // Set gas price so gasCost > 0
         vm.prank(loser);
-        vm.expectRevert(); // Expect arithmetic underflow/panic
         factory.claimPrize(lotteryId, losingTicket, abi.encodePacked("ticket_", vm.toString(losingTicket)));
+        
+        // Verify no funds were transferred to the loser
+        assertEq(loser.balance, balanceBefore, "Loser should receive nothing");
+        
+        // Verify ticket is marked as redeemed
+        (,, bool redeemed,) = factory.tickets(lotteryId, losingTicket);
+        assertTrue(redeemed, "Ticket should be marked as redeemed");
+    }
+
+    /**
+     * @notice Test claiming a prize that is less than the gas cost
+     * @dev Winner gets nothing, relayer gets the full prize as partial gas refund
+     */
+    function test_ClaimPrize_PrizeLessThanGasCost() public {
+        // Setup lottery with a very small prize
+        bytes memory creatorSecret = "secret";
+        bytes32 creatorCommitment = keccak256(creatorSecret);
+
+        bytes32[] memory ticketSecretHashes = new bytes32[](1);
+        ticketSecretHashes[0] = keccak256("ticket_0");
+
+        uint256[] memory prizeValues = new uint256[](1);
+        prizeValues[0] = 0.0001 ether; // Very small prize: 0.0001 ETH
+
+        uint256 commitDeadline = block.timestamp + 1 hours;
+        uint256 revealTime = block.timestamp + 1 hours + 30 minutes;
+
+        uint256 lotteryId = factory.createLottery{value: 0.0001 ether}(
+            creatorCommitment, ticketSecretHashes, prizeValues, commitDeadline, revealTime, 0
+        );
+
+        // Commit ticket
+        address winner = address(0x1);
+        vm.prank(winner);
+        factory.commitTicket(lotteryId, 0, ticketSecretHashes[0]);
+
+        // Warp past commit deadline and reveal
+        vm.warp(commitDeadline + 1);
+        vm.warp(revealTime);
+        factory.revealLottery(lotteryId, creatorSecret);
+
+        // Set a high gas price so gas cost > prize
+        // Gas cost = 50,000 gas * 100 gwei = 0.005 ETH > 0.0001 ETH prize
+        vm.txGasPrice(100 gwei);
+
+        // Record balances before claim
+        uint256 winnerBalanceBefore = winner.balance;
+        uint256 relayerBalanceBefore = tx.origin.balance;
+
+        // Claim the prize
+        vm.prank(winner);
+        factory.claimPrize(lotteryId, 0, "ticket_0");
+
+        // Winner should receive nothing (prize < gas cost)
+        assertEq(winner.balance, winnerBalanceBefore, "Winner should receive nothing when prize < gas cost");
+
+        // Relayer should receive the full prize as partial gas refund
+        assertEq(tx.origin.balance, relayerBalanceBefore + 0.0001 ether, "Relayer should receive full prize as partial gas refund");
+
+        // Verify ticket is marked as redeemed
+        (,, bool redeemed,) = factory.tickets(lotteryId, 0);
+        assertTrue(redeemed, "Ticket should be marked as redeemed");
     }
 
     // ============ Security Tests ============

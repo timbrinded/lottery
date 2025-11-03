@@ -63,7 +63,7 @@ export function useWriteLotteryFactory() {
   >(
     functionName: TFunctionName,
     args: TArgs,
-    options?: { value?: bigint }
+    options?: { value?: bigint; gas?: bigint }
   ) => {
     return writeContract({
       address,

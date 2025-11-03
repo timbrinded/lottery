@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useWriteLotteryFactory } from '@/contracts/hooks';
-import { useWaitForTransactionReceipt, useGasPrice } from 'wagmi';
+import { useWaitForTransactionReceipt, useGasPrice, useSimulateContract } from 'wagmi';
 import { parseContractError } from '@/lib/errors';
+import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
+import { useLotteryFactoryAddress } from '@/contracts/hooks';
 
 interface UseClaimPrizeParams {
   lotteryId: bigint;
@@ -79,7 +81,11 @@ export function useClaimPrize({
       return;
     }
 
-    writeLotteryFactory('claimPrize', [lotteryId, BigInt(ticketIndex), hexSecret as `0x${string}`]);
+    // Set explicit gas limit to ensure enough gas for transfers
+    // 150k should be more than enough for the claim operation
+    writeLotteryFactory('claimPrize', [lotteryId, BigInt(ticketIndex), hexSecret as `0x${string}`], {
+      gas: 150000n
+    });
   };
 
   return {
