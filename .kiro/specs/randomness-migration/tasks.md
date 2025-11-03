@@ -87,47 +87,47 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Verify no broken imports or undefined references
     - _Requirements: 2.1_
 
-- [ ] 3. Update dashboard UI
+- [x] 3. Update dashboard UI
 
-  - [ ] 3.1 Remove Close Commit Period button from dashboard
+  - [x] 3.1 Remove Close Commit Period button from dashboard
     - Open `fe/src/routes/dashboard.tsx`
     - Find and remove "Close Commit Period" button
     - Remove associated click handlers and state
     - Remove imports of useCloseCommitPeriod
     - _Requirements: 3.1_
 
-  - [ ] 3.2 Update reveal button display logic
+  - [x] 3.2 Update reveal button display logic
     - Change condition from `state === CommitClosed && block >= randomnessBlock`
     - To: `state === CommitOpen && now >= commitDeadline && now >= revealTime`
     - Update button text and tooltips
     - _Requirements: 3.2_
 
-  - [ ] 3.3 Remove BlockCountdown component from lottery cards
+  - [x] 3.3 Remove BlockCountdown component from lottery cards
     - Find BlockCountdown usage in dashboard
     - Remove component and imports
     - Replace with time-based countdown to reveal time only
     - _Requirements: 3.3, 3.4_
 
-  - [ ] 3.4 Update state badge display
+  - [x] 3.4 Update state badge display
     - Remove CommitClosed from state badge logic
     - Update state colors and labels
     - Verify only CommitOpen, RevealOpen, Finalized are shown
     - _Requirements: 2.5, 3.5_
 
-  - [ ] 3.5 Add participant count display
+  - [x] 3.5 Add participant count display
     - Use getCommittedCount() to fetch committed ticket count
     - Display count on lottery cards: "X / Y tickets committed"
     - Add warning badge if 0 commits and near reveal time
     - Show tooltip: "Need at least 1 committed ticket to reveal"
     - _Requirements: 3.5_
 
-  - [ ] 3.6 Update lottery status filters
+  - [x] 3.6 Update lottery status filters
     - Update filter logic to remove CommitClosed option
     - Verify filtering works with new state values
     - Update filter labels and descriptions
     - _Requirements: 3.5_
 
-- [ ] 4. Update error handling
+- [-] 4. Update error handling
 
   - [ ] 4.1 Update error mapping in errors.ts
     - Open `fe/src/lib/errors.ts`

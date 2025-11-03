@@ -16,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/shared/Countdown";
-import { BlockCountdown } from "@/components/shared/BlockCountdown";
 import { useRevealLottery } from "@/hooks/useRevealLottery";
 import { useRefundLottery } from "@/hooks/useRefundLottery";
 import { RevealLotteryModal } from "@/components/lottery/RevealLotteryModal";
@@ -36,7 +35,6 @@ export const Route = createFileRoute("/dashboard")({
 type LotteryState =
   | "Pending"
   | "CommitOpen"
-  | "CommitClosed"
   | "RevealOpen"
   | "Finalized";
 
@@ -61,7 +59,6 @@ function DashboardPage() {
     | "all"
     | "active"
     | "pending-reveal"
-    | "waiting-randomness"
     | "revealed"
     | "finalized"
   >("all");
@@ -247,11 +244,7 @@ function DashboardPage() {
           break;
         case "pending-reveal":
           shouldInclude =
-            state === "CommitClosed" && now >= Number(lottery.revealTime);
-          break;
-        case "waiting-randomness":
-          shouldInclude =
-            state === "CommitClosed" && now < Number(lottery.revealTime);
+            state === "CommitOpen" && now >= Number(lottery.commitDeadline) && now < Number(lottery.revealTime);
           break;
         case "revealed":
           shouldInclude = state === "RevealOpen";
@@ -314,12 +307,6 @@ function DashboardPage() {
               Pending Reveal
             </Button>
             <Button
-              variant={filter === "waiting-randomness" ? "default" : "outline"}
-              onClick={() => setFilter("waiting-randomness")}
-            >
-              Waiting for Randomness
-            </Button>
-            <Button
               variant={filter === "revealed" ? "default" : "outline"}
               onClick={() => setFilter("revealed")}
             >
@@ -362,7 +349,6 @@ function getStateString(state: number): LotteryState {
   const states: LotteryState[] = [
     "Pending",
     "CommitOpen",
-    "CommitClosed",
     "RevealOpen",
     "Finalized",
   ];
@@ -375,8 +361,6 @@ function getStateBadgeVariant(
   switch (state) {
     case "CommitOpen":
       return "default";
-    case "CommitClosed":
-      return "secondary";
     case "RevealOpen":
       return "default";
     case "Finalized":
@@ -435,7 +419,7 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
   // Debug logging
   useEffect(() => {
-    if (state === "CommitOpen" || state === "CommitClosed") {
+    if (state === "CommitOpen") {
       console.log(`Lottery ${lottery.id} reveal status:`, {
         canReveal,
         timeRemaining,
@@ -517,10 +501,17 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             </div>
           )}
 
-          {(state === "CommitClosed" || state === "RevealOpen") && (
+          {state === "CommitOpen" && timeRemaining > 0 && (
             <div className="flex justify-between">
               <span className="text-gray-600">Reveal Time:</span>
               <Countdown deadline={Number(lottery.revealTime)} />
+            </div>
+          )}
+
+          {state === "RevealOpen" && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Revealed:</span>
+              <span className="font-medium text-green-600">✓ Complete</span>
             </div>
           )}
 

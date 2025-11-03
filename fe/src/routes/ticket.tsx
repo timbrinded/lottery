@@ -97,9 +97,9 @@ function TicketPage() {
   const now = Math.floor(Date.now() / 1000);
 
   const isCommitPhase = state === 1 && now < commitDeadlineSeconds;
-  const isCommitClosed = state === 2;
-  const isRevealed = state === 3;
-  const isFinalized = state === 4;
+  const isWaitingForReveal = state === 1 && now >= commitDeadlineSeconds;
+  const isRevealed = state === 2;
+  const isFinalized = state === 3;
 
   // Fetch ticket data when revealed (disabled when not revealed or not checked)
   // Also fetch during commit phase to check if already committed on-chain
@@ -194,8 +194,8 @@ function TicketPage() {
         </Badge>
       );
     }
-    if (isCommitClosed) {
-      return <Badge variant="secondary">Commit Closed</Badge>;
+    if (isWaitingForReveal) {
+      return <Badge variant="secondary">Waiting for Reveal</Badge>;
     }
     if (isCommitPhase) {
       return (
@@ -394,8 +394,8 @@ function TicketPage() {
           </Card>
         )}
 
-        {/* Commit Closed - Waiting for Reveal */}
-        {isCommitClosed && (
+        {/* Waiting for Reveal */}
+        {isWaitingForReveal && (
           <Card>
             <CardHeader>
               <CardTitle>Waiting for Reveal</CardTitle>
@@ -407,9 +407,7 @@ function TicketPage() {
             <CardContent>
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <span className="text-sm font-medium">Reveal Time:</span>
-                <span className="font-mono font-semibold">
-                  {new Date(revealTimeSeconds * 1000).toLocaleString()}
-                </span>
+                <Countdown deadline={revealTimeSeconds} />
               </div>
               <p className="text-sm text-muted-foreground mt-4">
                 Come back after the reveal time to check your prize!
@@ -623,7 +621,7 @@ function TicketPage() {
 
         {/* Deadline Passed Before Commit */}
         {!isCommitPhase &&
-          !isCommitClosed &&
+          !isWaitingForReveal &&
           !isRevealed &&
           !isFinalized &&
           now >= commitDeadlineSeconds && (
