@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { keccak256, toBytes } from 'viem'
+import { keccak256 } from 'viem'
 import {
   Dialog,
   DialogContent,
@@ -46,9 +46,18 @@ export function RevealLotteryModal({
     }
 
     try {
+      // Normalize secret to hex string with 0x prefix
+      const hexSecret = secret.startsWith('0x') ? secret : `0x${secret}`;
+      
+      // Validate hex format (32 bytes = 64 hex chars)
+      if (!/^0x[0-9a-fA-F]{64}$/.test(hexSecret)) {
+        setIsValidSecret(false);
+        setLocalError('Invalid secret format: must be 32 bytes hex string');
+        return;
+      }
+      
       // Hash the secret and compare with commitment
-      const secretBytes = toBytes(secret)
-      const secretHash = keccak256(secretBytes)
+      const secretHash = keccak256(hexSecret as `0x${string}`)
       
       if (secretHash === creatorCommitment) {
         setIsValidSecret(true)
@@ -59,7 +68,7 @@ export function RevealLotteryModal({
       }
     } catch (err) {
       setIsValidSecret(false)
-      setLocalError('Invalid secret format')
+      setLocalError(err instanceof Error ? err.message : 'Invalid secret format')
     }
   }, [secret, creatorCommitment])
 

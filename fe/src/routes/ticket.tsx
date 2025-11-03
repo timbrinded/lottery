@@ -540,7 +540,7 @@ function TicketPage() {
                                     Gross Prize:
                                   </span>
                                   <span className="font-mono font-semibold">
-                                    {formatEther(prizeAmount)} ETH
+                                    {formatEther(prizeAmount)} USDC
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
@@ -548,13 +548,13 @@ function TicketPage() {
                                     Gas Cost:
                                   </span>
                                   <span className="font-mono text-red-600">
-                                    -{formatEther(gasCost)} ETH
+                                    -{formatEther(gasCost)} USDC
                                   </span>
                                 </div>
                                 <div className="flex justify-between text-base font-semibold pt-2 border-t">
                                   <span>Net Prize:</span>
                                   <span className="font-mono text-green-600">
-                                    {formatEther(netPrize)} ETH
+                                    {formatEther(netPrize)} USDC
                                   </span>
                                 </div>
                               </div>

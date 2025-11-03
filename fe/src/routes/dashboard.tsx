@@ -445,15 +445,15 @@ function LotteryCard({ lottery }: LotteryCardProps) {
   // Debug logging
   useEffect(() => {
     if (state === "CommitOpen") {
-      console.log(`Lottery ${lottery.id} reveal status:`, {
-        canReveal,
-        timeRemaining,
-        committedCount,
-        revealTime: lottery.revealTime,
-        commitDeadline: lottery.commitDeadline,
-        state: lottery.state,
-        now: Math.floor(Date.now() / 1000),
-      });
+      // console.log(`Lottery ${lottery.id} reveal status:`, {
+      //   canReveal,
+      //   timeRemaining,
+      //   committedCount,
+      //   revealTime: lottery.revealTime,
+      //   commitDeadline: lottery.commitDeadline,
+      //   state: lottery.state,
+      //   now: Math.floor(Date.now() / 1000),
+      // });
     }
   }, [
     canReveal,
@@ -472,11 +472,14 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
   const handleRevealClick = () => {
     const storedSecret = getSecret(lottery.id);
+    console.log('[handleRevealClick] storedSecret:', storedSecret, 'type:', typeof storedSecret);
     if (storedSecret) {
       // Auto-fill with stored secret
+      console.log('[handleRevealClick] Calling reveal with stored secret');
       reveal(storedSecret);
     } else {
       // Show modal to enter secret
+      console.log('[handleRevealClick] No stored secret, opening modal');
       setShowRevealModal(true);
     }
   };

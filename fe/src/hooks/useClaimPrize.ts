@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWriteLotteryFactory } from '@/contracts/hooks';
 import { useWaitForTransactionReceipt, useGasPrice } from 'wagmi';
-import { toBytes } from 'viem';
 import { parseContractError } from '@/lib/errors';
 
 interface UseClaimPrizeParams {
@@ -71,10 +70,16 @@ export function useClaimPrize({
       return;
     }
 
-    // Convert secret string to bytes
-    const secretBytes = toBytes(ticketSecret);
+    // Normalize secret to hex string with 0x prefix
+    const hexSecret = ticketSecret.startsWith('0x') ? ticketSecret : `0x${ticketSecret}`;
+    
+    // Validate hex format
+    if (!/^0x[0-9a-fA-F]{64}$/.test(hexSecret)) {
+      console.error('Invalid ticket secret format');
+      return;
+    }
 
-    writeLotteryFactory('claimPrize', [lotteryId, BigInt(ticketIndex), secretBytes]);
+    writeLotteryFactory('claimPrize', [lotteryId, BigInt(ticketIndex), hexSecret as `0x${string}`]);
   };
 
   return {

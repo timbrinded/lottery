@@ -51,32 +51,37 @@ const CONTRACT_ERROR_MESSAGES: Record<ContractError, string> = {
  * @returns User-friendly error message
  */
 export function parseContractError(errorMessage: string): string {
+  console.log('[parseContractError] Input:', errorMessage, 'type:', typeof errorMessage);
+  
+  // Ensure we have a string
+  const message = String(errorMessage || '');
+  
   // Check for each contract error type
-  for (const [errorType, message] of Object.entries(CONTRACT_ERROR_MESSAGES)) {
-    if (errorMessage.includes(errorType)) {
-      return message;
+  for (const [errorType, userMessage] of Object.entries(CONTRACT_ERROR_MESSAGES)) {
+    if (message.includes(errorType)) {
+      return userMessage;
     }
   }
 
   // Check for common wagmi/wallet errors
-  if (errorMessage.includes('User rejected') || errorMessage.includes('user rejected')) {
+  if (message.includes('User rejected') || message.includes('user rejected')) {
     return 'Transaction cancelled';
   }
 
-  if (errorMessage.includes('insufficient funds') || errorMessage.includes('InsufficientFunds')) {
-    return 'Insufficient ETH for transaction';
+  if (message.includes('insufficient funds') || message.includes('InsufficientFunds')) {
+    return 'Insufficient USDC for transaction';
   }
 
-  if (errorMessage.includes('network') || errorMessage.includes('Network')) {
+  if (message.includes('network') || message.includes('Network')) {
     return 'Network error, please try again';
   }
 
-  if (errorMessage.includes('nonce')) {
+  if (message.includes('nonce')) {
     return 'Transaction nonce error, please try again';
   }
 
   // Return original message if no match found
-  return errorMessage;
+  return message;
 }
 
 /**

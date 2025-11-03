@@ -13,11 +13,12 @@ export function generateSecret(): string {
 
 /**
  * Hash a secret using keccak256
- * @param secret - The secret to hash (hex string)
+ * @param secret - The secret to hash (hex string with or without 0x prefix)
  * @returns The keccak256 hash of the secret
  */
 export function hashSecret(secret: string): `0x${string}` {
-  return keccak256(toBytes(secret as `0x${string}`));
+  const hexSecret = secret.startsWith('0x') ? secret : `0x${secret}`;
+  return keccak256(hexSecret as `0x${string}`);
 }
 
 /**

@@ -89,7 +89,7 @@ export function PrizeAnimation({ prizeAmount, onAnimationComplete }: PrizeAnimat
             You Won!
           </h3>
           <div className="text-4xl font-bold animate-in slide-in-from-bottom duration-700 delay-150">
-            {formatEther(prizeAmount)} ETH
+            {formatEther(prizeAmount)} USDC
           </div>
           <p className="text-lg text-muted-foreground animate-in fade-in duration-700 delay-300">
             Congratulations! 🎊 Click below to claim your prize.

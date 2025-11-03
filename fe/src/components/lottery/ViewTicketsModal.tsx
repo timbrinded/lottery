@@ -78,6 +78,27 @@ export function ViewTicketsModal({
   const ticketSecrets = secretData?.ticketSecrets || [];
   const creatorSecret = secretData?.creatorSecret || '';
 
+  // Fetch lottery state to determine if prizes are revealed
+  const { data: lotteryStatus } = useReadContracts({
+    contracts: [{
+      address: contractAddress as `0x${string}`,
+      abi: LOTTERY_FACTORY_ABI as any,
+      functionName: 'getLotteryStatus',
+      args: [lotteryId],
+    }],
+    query: {
+      enabled: !!contractAddress && open,
+      refetchInterval: open ? 5000 : false,
+    },
+  });
+
+  const lotteryState = lotteryStatus?.[0]?.status === 'success' 
+    ? Number((lotteryStatus[0].result as any[])[0]) 
+    : 0;
+  
+  // State: 0=Pending, 1=CommitOpen, 2=RevealOpen, 3=Finalized
+  const isRevealed = lotteryState >= 2;
+
   const generateRedemptionUrl = (ticketCode: string): string => {
     const params = new URLSearchParams({ code: ticketCode });
     return `${window.location.origin}/ticket?${params.toString()}`;
@@ -228,12 +249,18 @@ export function ViewTicketsModal({
           }
           
           if (prizeAmount === BigInt(0)) {
-            return <span className="text-muted-foreground text-sm">Pending</span>;
+            // If lottery is revealed and prize is 0, show "No Prize"
+            // Otherwise show "Pending" (lottery not revealed yet)
+            return (
+              <span className="text-muted-foreground text-sm">
+                {isRevealed ? 'No Prize' : 'Pending'}
+              </span>
+            );
           }
           
           return (
             <div className="flex items-center gap-2">
-              <span className="font-medium">{formatEther(prizeAmount)} ETH</span>
+              <span className="font-medium">{formatEther(prizeAmount)} USDC</span>
               {redeemed && (
                 <Badge variant="outline" className="text-xs">
                   Claimed
