@@ -24,9 +24,14 @@ import { ViewTicketsModal } from "@/components/lottery/ViewTicketsModal";
 import { ContractNotDeployed } from "@/components/ContractNotDeployed";
 import { formatEther } from "viem";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Key } from "lucide-react";
+import { Loader2, Key, AlertTriangle } from "lucide-react";
 import { LOTTERY_FACTORY_ABI } from "@/contracts/LotteryFactory";
 import { useLotterySecrets } from "@/hooks/useLotterySecrets";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
@@ -602,6 +607,22 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             <Button onClick={handleRevealClick} className="w-full">
               Reveal Lottery
             </Button>
+          )}
+
+          {state === "CommitOpen" && !canReveal && timeRemaining <= 0 && committedCount === 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full">
+                  <Button disabled className="w-full">
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Reveal Lottery
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Need at least 1 committed ticket</p>
+              </TooltipContent>
+            </Tooltip>
           )}
 
           {state === "CommitOpen" && canRefund && (

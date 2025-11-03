@@ -127,22 +127,22 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Update filter labels and descriptions
     - _Requirements: 3.5_
 
-- [-] 4. Update error handling
+- [x] 4. Update error handling
 
-  - [ ] 4.1 Update error mapping in errors.ts
+  - [x] 4.1 Update error mapping in errors.ts
     - Open `fe/src/lib/errors.ts`
     - Remove mappings for: RandomnessBlockNotReached, BlockhashExpired, BlockhashUnavailable
     - Add mapping for: InsufficientCommittedTickets → "Need at least 1 committed ticket to reveal"
     - Update error type definitions
     - _Requirements: 4.1, 4.2, 4.3_
 
-  - [ ] 4.2 Update error display components
+  - [x] 4.2 Update error display components
     - Search for error message displays
     - Update any hardcoded error messages related to randomness
     - Verify new error messages display correctly
     - _Requirements: 4.1_
 
-  - [ ] 4.3 Add reveal button tooltips for disabled state
+  - [x] 4.3 Add reveal button tooltips for disabled state
     - When reveal button is disabled due to insufficient commits
     - Show tooltip: "Need at least 1 committed ticket"
     - Add visual indicator (warning icon)

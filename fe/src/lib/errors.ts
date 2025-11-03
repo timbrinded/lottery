@@ -29,7 +29,7 @@ export enum ContractError {
  */
 const CONTRACT_ERROR_MESSAGES: Record<ContractError, string> = {
   [ContractError.CommitDeadlinePassed]: 'Commit period has ended',
-  [ContractError.CommitPeriodNotClosed]: 'Commit period must be closed before revealing',
+  [ContractError.CommitPeriodNotClosed]: 'Commit deadline or reveal time has not been reached',
   [ContractError.InsufficientCommittedTickets]: 'Need at least 1 committed ticket to reveal',
   [ContractError.InvalidCreatorSecret]: 'Invalid creator secret',
   [ContractError.TicketNotCommitted]: 'You must commit before claiming',
