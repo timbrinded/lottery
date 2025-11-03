@@ -53,19 +53,6 @@
   },
   {
     "type": "function",
-    "name": "closeCommitPeriod",
-    "inputs": [
-      {
-        "name": "_lotteryId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "commitTicket",
     "inputs": [
       {
@@ -143,6 +130,25 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getCommittedCount",
+    "inputs": [
+      {
+        "name": "lotteryId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "committedCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -276,25 +282,6 @@
   },
   {
     "type": "function",
-    "name": "getRandomnessBlock",
-    "inputs": [
-      {
-        "name": "lotteryId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "randomnessBlock",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getRolloverPool",
     "inputs": [
       {
@@ -410,11 +397,6 @@
       },
       {
         "name": "commitDeadline",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "randomnessBlock",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -557,25 +539,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "event",
-    "name": "CommitPeriodClosed",
-    "inputs": [
-      {
-        "name": "lotteryId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "randomnessBlock",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
   },
   {
     "type": "event",
@@ -770,16 +733,6 @@
   },
   {
     "type": "error",
-    "name": "BlockhashExpired",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BlockhashUnavailable",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "ClaimDeadlinePassed",
     "inputs": []
   },
@@ -801,6 +754,11 @@
   {
     "type": "error",
     "name": "EmptyTicketsArray",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientCommittedTickets",
     "inputs": []
   },
   {
@@ -836,11 +794,6 @@
   {
     "type": "error",
     "name": "InvalidTicketSecret",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "RandomnessBlockNotReached",
     "inputs": []
   },
   {

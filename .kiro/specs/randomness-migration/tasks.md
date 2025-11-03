@@ -148,22 +148,22 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Add visual indicator (warning icon)
     - _Requirements: 4.4_
 
-- [ ] 5. Regenerate contract types
+- [x] 5. Regenerate contract types
 
-  - [ ] 5.1 Compile updated contract
+  - [x] 5.1 Compile updated contract
     - Run `forge build` in contract directory
     - Verify compilation succeeds
     - Check output in `contract/out/LotteryFactory.sol/LotteryFactory.json`
     - _Requirements: 2.1_
 
-  - [ ] 5.2 Update contract ABI in frontend
+  - [x] 5.2 Update contract ABI in frontend
     - Copy ABI from compiled output
     - Update `fe/src/contracts/LotteryFactory.ts`
     - Verify ABI includes new functions and events
     - Remove old event/error definitions
     - _Requirements: 2.1_
 
-  - [ ] 5.3 Update TypeScript type definitions
+  - [x] 5.3 Update TypeScript type definitions
     - Update LotteryState enum type (remove CommitClosed)
     - Update Lottery type (remove randomnessBlock field)
     - Update function parameter types
