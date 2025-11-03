@@ -170,9 +170,9 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Run TypeScript compiler to verify no type errors
     - _Requirements: 2.2, 2.5_
 
-- [ ] 6. Update documentation
+- [x] 6. Update documentation
 
-  - [ ] 6.1 Update design.md randomness section
+  - [x] 6.1 Update design.md randomness section
     - Open `.kiro/specs/mystery-lottery/design.md`
     - Replace blockhash section with multi-party commit-reveal explanation
     - Update security considerations
@@ -180,14 +180,14 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Update state machine diagram
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 6.2 Update tasks.md to reflect completed work
+  - [x] 6.2 Update tasks.md to reflect completed work
     - Open `.kiro/specs/mystery-lottery/tasks.md`
     - Mark randomness-related tasks as complete
     - Update task descriptions that reference closeCommitPeriod
     - Add note about migration completion
     - _Requirements: 5.5_
 
-  - [ ] 6.3 Create high-level game flow documentation
+  - [x] 6.3 Create high-level game flow documentation
     - Create new file: `docs/GAME_FLOW.md` or add section to design.md
     - Document the complete lottery lifecycle from creator and participant perspectives
     - Include Mermaid sequence diagrams showing interactions
@@ -195,21 +195,21 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Include Mermaid flowcharts for decision points
     - _Requirements: 5.1_
 
-  - [ ] 6.4 Create creator flow diagram
+  - [x] 6.4 Create creator flow diagram
     - Add Mermaid sequence diagram showing creator journey
     - Steps: Generate secrets → Create lottery → Distribute tickets → Wait for commits → Reveal → Monitor claims
     - Show interactions between Creator, Frontend, and Smart Contract
     - Include timing constraints (commit deadline, reveal time, claim deadline)
     - _Requirements: 5.1_
 
-  - [ ] 6.5 Create participant flow diagram
+  - [x] 6.5 Create participant flow diagram
     - Add Mermaid sequence diagram showing participant journey
     - Steps: Receive ticket → Commit ticket → Wait for reveal → Check prize → Claim prize
     - Show interactions between Participant, Frontend, and Smart Contract
     - Include decision points (won/lost, claim/forfeit)
     - _Requirements: 5.1_
 
-  - [ ] 6.6 Create state machine diagram
+  - [x] 6.6 Create state machine diagram
     - Add Mermaid state diagram showing lottery lifecycle
     - States: Pending → CommitOpen → RevealOpen → Finalized
     - Show state transitions with conditions
@@ -217,7 +217,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Document who can trigger each transition
     - _Requirements: 5.4_
 
-  - [ ] 6.7 Create randomness generation flowchart
+  - [x] 6.7 Create randomness generation flowchart
     - Add Mermaid flowchart showing how randomness is generated
     - Show: Creator secret + Ticket hashes → Combined entropy → Random seed → Prize assignment
     - Include minimum participant check
@@ -225,21 +225,21 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Document security properties at each step
     - _Requirements: 5.2_
 
-  - [ ] 6.8 Create prize assignment algorithm diagram
+  - [x] 6.8 Create prize assignment algorithm diagram
     - Add Mermaid flowchart showing prize-centric assignment
     - Show: Build committed tickets array → For each prize → Random selection → Remove winner → Repeat
     - Include edge case: No more committed tickets → Prize to rollover
     - Document O(M) complexity advantage
     - _Requirements: 5.1_
 
-  - [ ] 6.9 Create system architecture diagram
+  - [x] 6.9 Create system architecture diagram
     - Add Mermaid diagram showing system components
     - Components: Frontend (React) ↔ Web3 (wagmi/viem) ↔ Smart Contract (Solidity) ↔ Arc Blockchain
     - Show data flow for key operations (create, commit, reveal, claim)
     - Include off-chain components (secret generation, QR codes)
     - _Requirements: 5.1_
 
-  - [ ] 6.10 Create timing diagram
+  - [x] 6.10 Create timing diagram
     - Add Mermaid timeline or Gantt diagram showing lottery timeline
     - Show: Creation → Commit Period → Waiting Period → Reveal Time → Claim Period (24h) → Finalization
     - Mark key deadlines and windows
@@ -247,14 +247,14 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Include refund window (24h after reveal time if not revealed)
     - _Requirements: 5.1_
 
-  - [ ] 6.11 Update README or other docs
+  - [x] 6.11 Update README or other docs
     - Search for randomness documentation in README files
     - Update any user-facing documentation
     - Update developer setup guides if needed
     - Add links to new flow documentation
     - _Requirements: 5.1_
 
-- [ ] 7. Create "How It Works" modal and navigation updates
+- [-] 7. Create "How It Works" modal and navigation updates
 
   - [ ] 7.1 Create HowItWorksModal component
     - Create `fe/src/components/shared/HowItWorksModal.tsx`
@@ -303,7 +303,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Style: Subtle, secondary color, small text "View on GitHub"
     - _Requirements: 6.1_
 
-  - [ ] 7.5 Install shadcn dialog component if needed
+  - [-] 7.5 Install shadcn dialog component if needed
     - Run: `cd fe && bunx shadcn@latest add dialog`
     - Run: `bunx shadcn@latest add tabs` (if using tabs for panels)
     - Verify components added to `fe/src/components/ui/`

@@ -4,6 +4,18 @@
 
 This implementation plan breaks down the mystery lottery system into discrete, manageable coding tasks. Each task builds incrementally on previous work, following the commit-reveal pattern with prize cascade and flexible gas model.
 
+## ⚠️ Randomness Migration Completed
+
+**Note:** The randomness mechanism has been migrated from blockhash-based to multi-party commit-reveal. The `closeCommitPeriod` function and `CommitClosed` state have been removed. See `.kiro/specs/randomness-migration/` for details.
+
+**Key Changes:**
+- Removed `randomnessBlock` field from Lottery struct
+- Removed `closeCommitPeriod()` function
+- Removed `CommitClosed` state (now: Pending → CommitOpen → RevealOpen → Finalized)
+- `revealLottery()` now uses creator secret + participant ticket hashes for randomness
+- Minimum 1 committed ticket required to reveal
+- No timing constraints or block dependencies for reveal
+
 ## Library Reuse Strategy
 
 To avoid reinventing the wheel and maximize security, we'll use audited libraries wherever possible:
@@ -135,11 +147,12 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
     - ✅ Check block.timestamp against commitDeadline in commitTicket
     - ✅ Revert with CommitDeadlinePassed if deadline passed
-    - ✅ Create closeCommitPeriod function (callable by anyone)
-    - ✅ Set randomnessBlock = block.number + K (K = 10-50 blocks) when closing commit period
-    - ✅ Transition state to CommitClosed when deadline passes
+    - ✅ ~~Create closeCommitPeriod function~~ (REMOVED in randomness migration)
+    - ✅ ~~Set randomnessBlock~~ (REMOVED in randomness migration)
+    - ✅ ~~Transition state to CommitClosed~~ (State removed in randomness migration)
     - ✅ Comprehensive tests for commit phase including edge cases
     - _Requirements: 3.4, 3.7, 3.8_
+    - **Note:** closeCommitPeriod and CommitClosed state removed in randomness migration
 
   - [ ]\* 4.3 Implement sponsored commit function
     - Create commitTicketSponsored function
@@ -458,15 +471,16 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 - [x] 14. Implement reveal UI for creators
 
-  - [x] 13.4 Create useCloseCommitPeriod hook
+  - [x] 13.4 ~~Create useCloseCommitPeriod hook~~ (REMOVED in randomness migration)
 
-    - Create fe/src/hooks/useCloseCommitPeriod.ts
-    - Use wagmi's useWriteContract to call closeCommitPeriod(lotteryId)
-    - Check if block.timestamp >= lottery.commitDeadline
-    - Use useWaitForTransactionReceipt for confirmation
-    - Return: { closeCommit, isLoading, isSuccess, error }
-    - This can be called by anyone (not just creator) after commit deadline
+    - ~~Create fe/src/hooks/useCloseCommitPeriod.ts~~
+    - ~~Use wagmi's useWriteContract to call closeCommitPeriod(lotteryId)~~
+    - ~~Check if block.timestamp >= lottery.commitDeadline~~
+    - ~~Use useWaitForTransactionReceipt for confirmation~~
+    - ~~Return: { closeCommit, isLoading, isSuccess, error }~~
+    - ~~This can be called by anyone (not just creator) after commit deadline~~
     - _Requirements: 3.7, 3.8_
+    - **Note:** Hook removed as closeCommitPeriod function no longer exists
 
   - [x] 14.1 Create lottery dashboard
 
@@ -474,13 +488,14 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Fetch all lotteries where creator === connected wallet address
     - Use event logs or iterate through lotteryCounter to find creator's lotteries
     - Display lotteries in grid using shadcn Card components
-    - Show: lottery ID, prize pool, state, commit/reveal/claim deadlines, randomnessBlock
+    - Show: lottery ID, prize pool, state, commit/reveal/claim deadlines
     - Add countdown timers for each deadline
-    - Show "Close Commit Period" button when state === CommitOpen && now >= commitDeadline
-    - Show "Reveal Lottery" button when state === CommitClosed && block.number >= randomnessBlock
-    - Show waiting message when CommitClosed but block.number < randomnessBlock (with block countdown)
-    - Filter by state: Active, Pending Reveal, Waiting for Randomness, Revealed, Finalized
+    - ~~Show "Close Commit Period" button~~ (REMOVED in randomness migration)
+    - Show "Reveal Lottery" button when state === CommitOpen && now >= commitDeadline && now >= revealTime
+    - ~~Show waiting message for randomness block~~ (REMOVED in randomness migration)
+    - Filter by state: Active, Revealed, Finalized
     - _Requirements: 8.1, 8.2, 8.3_
+    - **Note:** Dashboard simplified after randomness migration - no CommitClosed state or block countdowns
 
   - [x] 14.2 Create RevealLotteryModal component
 
@@ -496,14 +511,16 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
   - [x] 14.3 Create useRevealLottery hook
     - Create fe/src/hooks/useRevealLottery.ts
-    - Check if block.number >= lottery.randomnessBlock before allowing reveal
+    - ~~Check if block.number >= lottery.randomnessBlock~~ (REMOVED in randomness migration)
+    - Check if now >= commitDeadline && now >= revealTime && committedCount >= 1
     - Use wagmi's useWriteContract to call revealLottery(lotteryId, creatorSecret)
     - Convert secret string to bytes using toBytes from viem
     - Use useWaitForTransactionReceipt for confirmation
-    - Return: { reveal, isLoading, isSuccess, error, canReveal, blocksRemaining }
-    - Handle errors: InvalidCreatorSecret, RandomnessBlockNotReached, BlockhashExpired
-    - Display countdown: "Randomness available in X blocks (~Y minutes)"
+    - Return: { reveal, isLoading, isSuccess, error, canReveal }
+    - Handle errors: InvalidCreatorSecret, InsufficientCommittedTickets
+    - ~~Display countdown for randomness block~~ (REMOVED in randomness migration)
     - _Requirements: 4.4, 4.5, 11.6_
+    - **Note:** Simplified reveal logic after randomness migration - no block dependencies
 
 - [x] 15. Implement prize reveal and claim UI
 
@@ -567,7 +584,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Add color coding: green (>24h), yellow (6-24h), red (<6h)
     - _Requirements: 2.6, 3.2, 5.2, 6.9_
 
-  - [x] 16.1b Create BlockCountdown component
+  - [x] 16.1b ~~Create BlockCountdown component~~ (DEPRECATED after randomness migration)
 
     - ✅ Create fe/src/components/shared/BlockCountdown.tsx
     - ✅ Accept targetBlock (block number) as prop
@@ -578,6 +595,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - ✅ Show "Block reached!" when currentBlock >= targetBlock
     - ✅ Add color coding: green (>10 blocks), yellow (5-10 blocks), red (<5 blocks)
     - _Requirements: 4.6, 10.2_
+    - **Note:** Component still exists but no longer used after randomness migration
 
   - [x] 16.2 Add deadline warnings
 
@@ -606,8 +624,9 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
     - Create fe/src/lib/errors.ts with error mapping
     - Map contract errors to user messages:
       - CommitDeadlinePassed → "Commit period has ended"
-      - RandomnessBlockNotReached → "Please wait for randomness block (X blocks remaining)"
-      - BlockhashExpired → "Reveal window expired, lottery can be refunded"
+      - ~~RandomnessBlockNotReached~~ (REMOVED in randomness migration)
+      - ~~BlockhashExpired~~ (REMOVED in randomness migration)
+      - InsufficientCommittedTickets → "Need at least 1 committed ticket to reveal"
       - InvalidCreatorSecret → "Invalid creator secret"
       - TicketAlreadyRedeemed → "Prize already claimed"
     - Handle wagmi errors:
@@ -615,6 +634,7 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
       - InsufficientFundsError → "Insufficient ETH for transaction"
     - Use shadcn Toast or Alert to display errors
     - _Requirements: 12.2, 12.5_
+    - **Note:** Error mappings updated after randomness migration
 
   - [x] 17.3 Add state-based error handling
 
@@ -786,66 +806,57 @@ To avoid reinventing the wheel and maximize security, we'll use audited librarie
 
 **Issue Identified:** The current implementation uses `block.prevrandao` for randomness, but the design document explicitly states that Arc blockchain doesn't support RANDAO (always returns 0). The design specifies using future block hash with a `randomnessBlock` mechanism to prevent creator grinding attacks.
 
-- [x] 22. Fix randomness generation to match design specification
+- [x] 22. ~~Fix randomness generation to match design specification~~ (SUPERSEDED by randomness migration)
 
-  - [x] 22.1 Update closeCommitPeriod function implementation
+  - [x] 22.1 ~~Update closeCommitPeriod function implementation~~ (Function removed in migration)
 
-    - Modify `closeCommitPeriod` to set `randomnessBlock = block.number + K` (where K = 10-50 blocks)
-    - Add event emission: `CommitPeriodClosed(lotteryId, randomnessBlock)`
-    - Update tests to verify randomnessBlock is set correctly
-    - Test that closeCommitPeriod can only be called after commit deadline
-    - Test that closeCommitPeriod transitions state from CommitOpen to CommitClosed
+    - ~~Modify `closeCommitPeriod` to set `randomnessBlock = block.number + K`~~
+    - ~~Add event emission: `CommitPeriodClosed(lotteryId, randomnessBlock)`~~
+    - ~~Update tests to verify randomnessBlock is set correctly~~
     - _Requirements: 4.6, 10.2_
+    - **Note:** Entire closeCommitPeriod mechanism removed in randomness migration
 
-  - [x] 22.2 Update revealLottery to use future block hash
+  - [x] 22.2 ~~Update revealLottery to use future block hash~~ (Replaced with multi-party commit-reveal)
 
-    - Replace `block.prevrandao` with `blockhash(lottery.randomnessBlock)`
-    - Add validation: `require(block.number >= lottery.randomnessBlock, "Randomness block not reached")`
-    - Add validation: `require(block.number <= lottery.randomnessBlock + 256, "Blockhash expired")`
-    - Add validation: `require(blockEntropy != bytes32(0), "Blockhash unavailable")`
-    - Update random seed generation: `keccak256(abi.encodePacked(_creatorSecret, blockEntropy))`
-    - Add custom errors: `RandomnessBlockNotReached`, `BlockhashExpired`, `BlockhashUnavailable`
+    - ~~Replace `block.prevrandao` with `blockhash(lottery.randomnessBlock)`~~
+    - ~~Add validation for randomness block~~
+    - Now uses: `keccak256(creatorSecret + hash(all committed ticket hashes))`
     - _Requirements: 4.6, 10.1, 10.2_
+    - **Note:** Randomness now comes from participants, not block hash
 
-  - [x] 22.3 Add randomnessBlock field to Lottery struct
+  - [x] 22.3 ~~Add randomnessBlock field to Lottery struct~~ (Field removed in migration)
 
-    - Verify `randomnessBlock` field exists in Lottery struct (should already be there from design)
-    - If missing, add: `uint256 randomnessBlock; // Block number for entropy source`
-    - Initialize to 0 in createLottery function
+    - ~~Verify `randomnessBlock` field exists~~
+    - Field removed from Lottery struct
     - _Requirements: 4.6_
+    - **Note:** No longer needed with multi-party commit-reveal
 
-  - [x] 22.4 Update view functions for randomness status
+  - [x] 22.4 ~~Update view functions for randomness status~~ (Updated for new mechanism)
 
-    - Update `isRevealReady` to check: `state == CommitClosed && block.number >= lottery.randomnessBlock`
-    - Add getter function: `getRandomnessBlock(uint256 lotteryId) returns (uint256)`
-    - Add helper function: `canRevealNow(uint256 lotteryId) returns (bool, string memory reason)`
-    - Return reasons: "Commit period not closed", "Randomness block not reached", "Blockhash expired", "Ready to reveal"
+    - ~~Update `isRevealReady` to check randomness block~~
+    - Now checks: state == CommitOpen && now >= commitDeadline && now >= revealTime && committedCount >= 1
     - _Requirements: 4.6_
+    - **Note:** View functions updated for time-based reveal
 
-  - [x] 22.5 Comprehensive testing for randomness mechanism
+  - [x] 22.5 ~~Comprehensive testing for randomness mechanism~~ (Tests updated for new mechanism)
 
-    - Test closeCommitPeriod sets randomnessBlock correctly (block.number + K)
-    - Test revealLottery reverts if block.number < randomnessBlock
-    - Test revealLottery reverts if block.number > randomnessBlock + 256
-    - Test revealLottery succeeds when randomnessBlock <= block.number <= randomnessBlock + 256
-    - Test that different block hashes produce different random seeds
-    - Test that same creator secret + same block hash = same seed (deterministic)
-    - Use vm.roll() to manipulate block numbers in tests
-    - Use vm.prevrandao() to set block hash for testing (if needed)
+    - ~~Test closeCommitPeriod and randomness block~~
+    - Tests now verify multi-party commit-reveal randomness
+    - Tests verify minimum 1 participant requirement
     - _Requirements: 4.6, 10.1, 10.2_
+    - **Note:** See randomness-migration spec for updated test requirements
 
-  - [x] 22.6 Update integration tests for full lifecycle with randomness
+  - [x] 22.6 ~~Update integration tests for full lifecycle with randomness~~ (Tests updated)
 
-    - Test complete flow: create → commit → closeCommitPeriod → wait for randomnessBlock → reveal → claim
-    - Test scenario where creator tries to reveal too early (before randomnessBlock)
-    - Test scenario where creator waits too long (after 256 blocks)
-    - Test multiple lotteries with different randomness blocks
-    - Verify prize assignments are different with different block hashes
+    - ~~Test complete flow with closeCommitPeriod and randomness block~~
+    - Tests now verify: create → commit → reveal (no intermediate step)
     - _Requirements: 10.5_
+    - **Note:** Simplified flow after migration
 
   - [x] 22.7 Update design documentation if needed
-    - Review design.md to ensure randomness section is accurate
-    - Add note about K value (number of blocks to wait) - recommend 20 blocks (~4 minutes on 12s blocks)
-    - Document the 256-block window limitation for blockhash availability
-    - Add warning about refund mechanism if creator misses the reveal window
+    - ✅ Design.md updated with multi-party commit-reveal explanation
+    - ✅ Removed blockhash references
+    - ✅ Added minimum participant requirement documentation
+    - ✅ Updated state machine diagram
     - _Requirements: Documentation_
+    - **Note:** Completed as part of randomness migration (task 6.1)

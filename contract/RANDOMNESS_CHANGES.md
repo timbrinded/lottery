@@ -124,8 +124,17 @@ The following test files need updates:
 
 ### Frontend Updates Needed
 
-1. Remove `useCloseCommitPeriod` hook
-2. Update dashboard to not show "Close Commit Period" button
-3. Update `useRevealLottery` hook to remove randomness block checks
-4. Update lottery status displays to remove CommitClosed state
-5. Update countdown/timing logic (no more waiting for randomness block)
+1. ✅ Remove `useCloseCommitPeriod` hook
+2. ✅ Update dashboard to not show "Close Commit Period" button
+3. ✅ Update `useRevealLottery` hook to remove randomness block checks
+4. ✅ Update lottery status displays to remove CommitClosed state
+5. ✅ Update countdown/timing logic (no more waiting for randomness block)
+
+**Status:** All frontend updates completed. See `.kiro/specs/randomness-migration/tasks.md` for details.
+
+### Additional Documentation
+
+For comprehensive visual documentation of the new randomness mechanism and game flow:
+- **[GAME_FLOW.md](../GAME_FLOW.md)** - Sequence diagrams, state machines, and flowcharts
+- **[Randomness Migration Spec](../.kiro/specs/randomness-migration/)** - Complete migration documentation
+- **[Design Document](../.kiro/specs/mystery-lottery/design.md)** - Updated technical design

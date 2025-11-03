@@ -46,17 +46,16 @@ The Mystery Lottery system is a decentralized lottery platform on Arc blockchain
 Each lottery progresses through distinct states:
 
 ```
-Pending → CommitOpen → CommitClosed → RevealReady → RevealOpen → Finalized
+Pending → CommitOpen → RevealOpen → Finalized
 ```
 
 **State Transitions:**
 - `Pending → CommitOpen`: Lottery created, commit period begins
-- `CommitOpen → CommitClosed`: Commit deadline passes, randomnessBlock set
-- `CommitClosed → RevealReady`: Randomness block arrives (block.number >= randomnessBlock)
-- `RevealReady → RevealOpen`: Creator reveals secret, prizes assigned
+- `CommitOpen → RevealOpen`: Creator reveals secret after commit deadline and reveal time, prizes assigned
 - `RevealOpen → Finalized`: Claim deadline passes, forfeited prizes processed
 
-**Note:** RevealReady is a computed state (not stored), determined by checking if `block.number >= lottery.randomnessBlock`
+**Alternative Path:**
+- `CommitOpen → Finalized`: If creator doesn't reveal within 24 hours of reveal time, participants can request refunds
 
 ## Components and Interfaces
 
@@ -68,7 +67,6 @@ Pending → CommitOpen → CommitClosed → RevealReady → RevealOpen → Final
 enum LotteryState {
     Pending,
     CommitOpen,
-    CommitClosed,
     RevealOpen,
     Finalized
 }
@@ -80,7 +78,6 @@ struct Lottery {
     uint256[] prizeValues; // In native USDC (6 decimals)
     bytes32[] ticketSecretHashes;
     uint256 commitDeadline;
-    uint256 randomnessBlock; // Block number for entropy source (set when commit closes)
     uint256 revealTime;
     uint256 claimDeadline;
     uint256 randomSeed;
@@ -128,13 +125,6 @@ function commitTicketSponsored(
     uint256 _lotteryId,
     uint256 _ticketIndex,
     bytes32 _ticketSecretHash
-) external
-```
-
-**Commit Close Phase:**
-```solidity
-function closeCommitPeriod(
-    uint256 _lotteryId
 ) external
 ```
 
@@ -279,11 +269,8 @@ interface PrizeAssignment {
 
 ```solidity
 error CommitDeadlinePassed();
-error CommitPeriodNotClosed();
-error RandomnessBlockNotReached();
-error BlockhashExpired();
-error BlockhashUnavailable();
 error InvalidCreatorSecret();
+error InsufficientCommittedTickets();
 error TicketNotCommitted();
 error TicketAlreadyRedeemed();
 error InvalidTicketSecret();
@@ -440,48 +427,45 @@ function commitTicketSponsored(uint256 lotteryId, uint256 ticketIndex, bytes32 t
 
 ### Randomness
 
-**Approach:** Combine creator secret + future block hash
+**Approach:** Multi-party commit-reveal using creator secret + participant ticket hashes
 - Creator provides unpredictable secret (committed before distribution)
-- Future block hash (determined at commit deadline) adds blockchain-level randomness
+- Each participant's ticket hash contributes entropy when they commit
 - Combined via keccak256 for final seed
+- No timing constraints or block dependencies
 
 **Implementation Strategy:**
-1. When commit period closes, store `randomnessBlock = block.number + K` (K = 10-50 blocks)
-2. Creator must wait for `randomnessBlock` to arrive before revealing
-3. Use `blockhash(randomnessBlock)` which was unpredictable during commit phase
-4. This prevents creator from grinding/timing attacks
+1. Creator generates and commits to secret during lottery creation
+2. Participants commit their ticket hashes during commit period
+3. After commit deadline and reveal time, creator reveals secret
+4. Random seed = keccak256(creatorSecret + hash(all committed ticket hashes))
+5. Prizes assigned deterministically based on seed
 
 **Detailed Flow:**
 
 ```solidity
-// Step 1: Close commit period (anyone can call after deadline)
-function closeCommitPeriod(uint256 _lotteryId) external {
-    require(block.timestamp >= lottery.commitDeadline, "Commit period not ended");
-    require(lottery.state == LotteryState.CommitOpen, "Invalid state");
-    
-    // Set future block for randomness (10-50 blocks ahead)
-    lottery.randomnessBlock = block.number + 20; // ~4 minutes on 12s blocks
-    lottery.state = LotteryState.CommitClosed;
-    
-    emit CommitPeriodClosed(_lotteryId, lottery.randomnessBlock);
-}
-
-// Step 2: Reveal lottery (creator calls after randomnessBlock arrives)
+// Reveal lottery (creator calls after commit deadline and reveal time)
 function revealLottery(uint256 _lotteryId, bytes calldata _creatorSecret) external {
+    Lottery storage lottery = lotteries[_lotteryId];
+    
     require(msg.sender == lottery.creator, "Only creator");
-    require(lottery.state == LotteryState.CommitClosed, "Invalid state");
-    require(block.number >= lottery.randomnessBlock, "Randomness block not reached");
-    require(block.number <= lottery.randomnessBlock + 256, "Blockhash expired");
+    require(lottery.state == LotteryState.CommitOpen, "Invalid state");
+    require(block.timestamp >= lottery.commitDeadline, "Commit period not ended");
+    require(block.timestamp >= lottery.revealTime, "Reveal time not reached");
     
     // Verify creator secret
     require(keccak256(_creatorSecret) == lottery.creatorCommitment, "Invalid secret");
     
-    // Get future block hash (was unpredictable during commit phase)
-    bytes32 blockEntropy = blockhash(lottery.randomnessBlock);
-    require(blockEntropy != bytes32(0), "Blockhash unavailable");
+    // Get committed ticket count
+    uint256 committedCount = getCommittedCount(_lotteryId);
+    require(committedCount >= 1, "Need at least 1 committed ticket");
     
-    // Combine for final random seed
-    lottery.randomSeed = uint256(keccak256(abi.encodePacked(_creatorSecret, blockEntropy)));
+    // Combine creator secret with all committed ticket hashes
+    bytes32 combinedEntropy = keccak256(abi.encodePacked(
+        _creatorSecret,
+        _hashCommittedTickets(_lotteryId)
+    ));
+    
+    lottery.randomSeed = uint256(combinedEntropy);
     
     // Assign prizes
     _assignPrizes(_lotteryId);
@@ -491,34 +475,59 @@ function revealLottery(uint256 _lotteryId, bytes calldata _creatorSecret) extern
     
     emit LotteryRevealed(_lotteryId, lottery.randomSeed);
 }
+
+// Helper: Hash all committed ticket hashes together
+function _hashCommittedTickets(uint256 _lotteryId) internal view returns (bytes32) {
+    Lottery storage lottery = lotteries[_lotteryId];
+    bytes memory concatenated;
+    
+    for (uint256 i = 0; i < lottery.ticketSecretHashes.length; i++) {
+        if (tickets[_lotteryId][i].committed) {
+            concatenated = abi.encodePacked(concatenated, lottery.ticketSecretHashes[i]);
+        }
+    }
+    
+    return keccak256(concatenated);
+}
 ```
 
-**Why Future Block Hash?**
-- **Arc Limitation**: RANDAO always returns 0 on Arc blockchain
-- **Security**: Creator cannot predict future block hash during commit phase
-- **No Grinding**: Using `blockhash(block.number - 1)` would allow creator to:
-  1. Query current block hash before submitting reveal
-  2. Simulate prize outcomes off-chain
-  3. Only submit when outcomes are favorable
-  4. This is a "grinding attack" that breaks fairness
-- **Trade-off**: Adds 2-10 minute delay between commit close and reveal (acceptable, builds suspense)
+**Why Multi-Party Commit-Reveal?**
+- **No Block Dependencies**: No waiting for future blocks or blockhash availability
+- **Simpler UX**: Creator can reveal immediately after commit deadline + reveal time
+- **More Entropy**: Each participant contributes randomness through their ticket hash
+- **No Grinding**: Creator cannot predict participant commitments in advance
+- **Deterministic**: Same commits always produce same outcome (verifiable fairness)
+- **Gas Efficient**: No extra transaction to close commit period
+
+**Security Properties:**
+1. **Creator Cannot Manipulate Alone**: Creator's secret is committed before tickets are distributed, so they cannot choose a favorable secret after seeing commitments
+2. **Participants Cannot Manipulate**: Each participant only knows their own ticket, not others' tickets or the creator secret
+3. **Collusion Resistant**: Even if some participants collude with creator, they cannot predict the full outcome without knowing all other participants' tickets
+4. **Verifiable**: Anyone can verify the randomness generation by checking the creator secret matches the commitment and all ticket hashes are included
+
+**Minimum Participant Requirement:**
+- Requires at least 1 committed ticket to reveal
+- Prevents creator from revealing empty lottery
+- If 0 commits, participants can request refund after 24 hours past reveal time
+- Ensures meaningful entropy contribution from participants
 
 **Why not VRF?**
 - Cost: VRF costs $5-10 per request
 - Complexity: Requires oracle integration
-- Sufficient: Future block hash + commit-reveal provides adequate randomness for small-to-medium lotteries
+- Sufficient: Multi-party commit-reveal provides adequate randomness for small-to-medium lotteries
+- Better UX: No waiting for oracle callbacks
 
 **Attack Vectors Mitigated:**
-- Creator manipulation: Can't know future block hash at commit time ✅
-- Creator grinding: Can't simulate outcomes before reveal (block hash not yet available) ✅
-- Miner/validator manipulation: Creator secret prevents single-party control ✅
+- Creator manipulation: Cannot predict participant commitments ✅
+- Creator grinding: Secret committed before distribution ✅
 - Participant gaming: Must commit before reveal ✅
+- Collusion: Requires knowing all participants' secrets ✅
+- Empty lottery: Minimum 1 participant enforced ✅
 
 **Limitations:**
-- Requires waiting period (K blocks) after commit deadline before reveal
-- Blockhash only available for 256 blocks (must reveal within this window)
+- Requires at least 1 participant for meaningful randomness
 - Not suitable for high-value lotteries (>$10k) - use VRF instead
-- Theoretically vulnerable to validator manipulation (but economically irrational)
+- Theoretically vulnerable if creator colludes with ALL participants (economically irrational)
 
 ### USDC Handling on Arc
 
