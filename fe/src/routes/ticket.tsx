@@ -63,6 +63,7 @@ function TicketPage() {
   } = useReadLotteryFactory("getLotteryStatus", [lotteryId], {
     query: {
       enabled: !!decodedTicket,
+      refetchInterval: 10000, // Refetch every 10 seconds to keep data fresh
     },
   });
 

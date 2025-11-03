@@ -88,7 +88,7 @@ export function ViewTicketsModal({
     return ticketSecrets.map((_, index) => index);
   }, [ticketSecrets]);
 
-  const { data: ticketCommitments, isLoading: isLoadingCommitments } = useReadContracts({
+  const { data: ticketCommitments, isLoading: isLoadingCommitments, refetch } = useReadContracts({
     contracts: ticketIndices.map((index) => ({
       address: contractAddress as `0x${string}`,
       abi: LOTTERY_FACTORY_ABI as any,
@@ -96,26 +96,71 @@ export function ViewTicketsModal({
       args: [lotteryId, BigInt(index)],
     })),
     query: {
-      enabled: !!contractAddress && ticketSecrets.length > 0,
+      enabled: !!contractAddress && ticketSecrets.length > 0 && open,
+      refetchInterval: open ? 5000 : false, // Only refetch when modal is open
+      refetchOnMount: true,
     },
   });
 
   // Generate ticket data with commitment status
   const tickets: TicketData[] = useMemo(() => {
+    console.log('ViewTicketsModal: Processing ticket commitments', {
+      lotteryId: lotteryId.toString(),
+      ticketCount: ticketSecrets.length,
+      commitmentsData: ticketCommitments,
+    });
+
     return ticketSecrets.map((secret, index) => {
       const ticketCode = encodeTicketCode(lotteryId, index, secret);
       const commitment = ticketCommitments?.[index];
-      const commitmentData = commitment?.status === 'success' ? (commitment.result as any[]) : null;
+      
+      // Handle both array and object result formats
+      let committed = false;
+      let holder = '0x0000000000000000000000000000000000000000';
+      let redeemed = false;
+      let prizeAmount = BigInt(0);
+
+      if (commitment?.status === 'success' && commitment.result) {
+        const result = commitment.result as any;
+        
+        // Check if result is an array or object with named properties
+        if (Array.isArray(result)) {
+          // Array format: [holder, committed, redeemed, prizeAmount]
+          holder = result[0];
+          committed = result[1];
+          redeemed = result[2];
+          prizeAmount = result[3];
+        } else if (typeof result === 'object') {
+          // Object format with named properties
+          holder = result.holder || result[0];
+          committed = result.committed !== undefined ? result.committed : result[1];
+          redeemed = result.redeemed !== undefined ? result.redeemed : result[2];
+          prizeAmount = result.prizeAmount !== undefined ? result.prizeAmount : result[3];
+        }
+      }
+
+      console.log(`ViewTicketsModal: Ticket ${index}`, {
+        status: commitment?.status,
+        resultType: typeof commitment?.result,
+        resultIsArray: Array.isArray(commitment?.result),
+        result: commitment?.result,
+        parsed: { 
+          holder, 
+          committed, 
+          redeemed, 
+          prizeAmount: prizeAmount.toString() 
+        },
+      });
 
       return {
         ticketIndex: index,
         ticketSecret: secret,
         ticketCode,
         redemptionUrl: generateRedemptionUrl(ticketCode),
-        committed: commitmentData ? commitmentData[1] : false,
-        holder: commitmentData ? commitmentData[0] : '0x0000000000000000000000000000000000000000',
-        redeemed: commitmentData ? commitmentData[2] : false,
-        prizeAmount: commitmentData ? commitmentData[3] : BigInt(0),
+        committed,
+        holder,
+        redeemed,
+        prizeAmount,
       };
     });
   }, [ticketSecrets, ticketCommitments, lotteryId]);

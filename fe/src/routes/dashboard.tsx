@@ -89,13 +89,13 @@ function DashboardPage() {
     return ids;
   }, [lotteryCounter]);
 
-  // Fetch all lottery data in parallel
+  // Fetch all lottery data in parallel using getLotteryStatus
   const { data: lotteriesData, isLoading: isLotteriesLoading } =
     useReadContracts({
       contracts: lotteryIds.map((id) => ({
         address: contractAddress as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI as any,
-        functionName: "lotteries",
+        functionName: "getLotteryStatus",
         args: [id],
       })),
       query: {
@@ -103,6 +103,20 @@ function DashboardPage() {
         refetchInterval: 10000, // Refetch every 10 seconds to keep data fresh
       },
     });
+
+  // Fetch creator and prize pool info separately
+  const { data: lotteryDetailsData } = useReadContracts({
+    contracts: lotteryIds.map((id) => ({
+      address: contractAddress as `0x${string}`,
+      abi: LOTTERY_FACTORY_ABI as any,
+      functionName: "lotteries",
+      args: [id],
+    })),
+    query: {
+      enabled: !!contractAddress && lotteryIds.length > 0,
+      refetchInterval: 10000,
+    },
+  });
 
   // Fetch ticket counts for each lottery
   const { data: ticketCountsData } = useReadContracts({
@@ -135,34 +149,19 @@ function DashboardPage() {
 
     lotteriesData.forEach((result, index) => {
       const lotteryId = lotteryIds[index];
-      console.log(`Processing lottery ${lotteryId}:`, {
-        status: result.status,
-        hasResult: !!result.result,
-      });
+      const detailsResult = lotteryDetailsData?.[index];
 
-      if (result.status === "success" && result.result) {
-        // Contract returns tuple as array: [creator, creatorCommitment, totalPrizePool, commitDeadline, revealTime, claimDeadline, randomSeed, state, createdAt, sponsoredGasPool, sponsoredGasUsed]
-        // Note: randomnessBlock field removed in new contract version
-        const lotteryData = result.result as any[];
+      if (result.status === "success" && result.result && detailsResult?.status === "success" && detailsResult.result) {
+        // getLotteryStatus returns: (state, commitDeadline, revealTime, claimDeadline, createdAt)
+        const statusData = result.result as any[];
+        // lotteries mapping returns full struct
+        const detailsData = detailsResult.result as any[];
 
-        // Check if we have valid data
-        if (!lotteryData || lotteryData.length < 10) {
-          console.warn(`Invalid lottery data for ID ${lotteryId}`);
-          return;
-        }
-
-        const creator = lotteryData[0] as string;
-        console.log(`Lottery ${lotteryId} creator:`, creator, "vs", address);
+        const creator = detailsData[0] as string;
 
         // Only include lotteries created by the connected user
         if (creator && creator.toLowerCase() === address.toLowerCase()) {
           const ticketCountData = ticketCountsData?.[index];
-          console.log(`Lottery ${lotteryIds[index]} ticket data:`, {
-            status: ticketCountData?.status,
-            result: ticketCountData?.result,
-            error: ticketCountData?.error,
-          });
-
           const ticketCount =
             ticketCountData?.status === "success"
               ? (ticketCountData.result as any[]).length
@@ -171,27 +170,22 @@ function DashboardPage() {
           userLotteries.push({
             id: lotteryIds[index],
             creator: creator,
-            creatorCommitment: lotteryData[1] as `0x${string}`,
-            totalPrizePool: lotteryData[2] as bigint,
+            creatorCommitment: detailsData[1] as `0x${string}`,
+            totalPrizePool: detailsData[2] as bigint,
             numberOfTickets: BigInt(ticketCount),
-            commitDeadline: lotteryData[3] as bigint,
-            revealTime: lotteryData[5] as bigint,
-            claimDeadline: lotteryData[6] as bigint,
-            state: Number(lotteryData[8]),
-            createdAt: lotteryData[9] as bigint,
+            commitDeadline: statusData[1] as bigint,
+            revealTime: statusData[2] as bigint,
+            claimDeadline: statusData[3] as bigint,
+            state: Number(statusData[0]),
+            createdAt: statusData[4] as bigint,
           });
-          console.log(`Added lottery ${lotteryIds[index]} to user lotteries`);
-        } else {
-          console.log(
-            `Skipping lottery ${lotteryIds[index]} - creator mismatch`
-          );
         }
       }
     });
 
     console.log("Total user lotteries:", userLotteries.length);
     setLotteries(userLotteries);
-  }, [lotteriesData, ticketCountsData, address, lotteryIds]);
+  }, [lotteriesData, lotteryDetailsData, ticketCountsData, address, lotteryIds]);
 
   const isLoading = isCounterLoading || isLotteriesLoading;
 
@@ -396,6 +390,32 @@ function LotteryCard({ lottery }: LotteryCardProps) {
     }
   })();
 
+  // Calculate commit period duration
+  const commitPeriodSeconds = Number(lottery.revealTime) - Number(lottery.commitDeadline);
+  const commitPeriodMinutes = Math.floor(commitPeriodSeconds / 60);
+
+  // Format timestamp to readable date
+  const formatTimestamp = (timestamp: bigint) => {
+    return new Date(Number(timestamp) * 1000).toLocaleString();
+  };
+
+  // Determine next deadline for countdown banner
+  const now = Math.floor(Date.now() / 1000);
+  const getNextDeadline = () => {
+    if (state === "CommitOpen" && now < Number(lottery.commitDeadline)) {
+      return { label: "Commit Deadline", deadline: Number(lottery.commitDeadline) };
+    }
+    if (state === "CommitOpen" && now < Number(lottery.revealTime)) {
+      return { label: "Reveal Time", deadline: Number(lottery.revealTime) };
+    }
+    if (state === "RevealOpen" && lottery.claimDeadline > 0n && now < Number(lottery.claimDeadline)) {
+      return { label: "Claim Deadline", deadline: Number(lottery.claimDeadline) };
+    }
+    return null;
+  };
+
+  const nextDeadline = getNextDeadline();
+
   const {
     reveal,
     isLoading: isRevealing,
@@ -482,7 +502,26 @@ function LotteryCard({ lottery }: LotteryCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Countdown Banner */}
+        {nextDeadline && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-blue-900">{nextDeadline.label}:</span>
+                <Countdown deadline={nextDeadline.deadline} />
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Created:</span>
+            <span className="font-mono text-xs">
+              {formatTimestamp(lottery.createdAt)}
+            </span>
+          </div>
+
           <div className="flex justify-between">
             <span className="text-gray-600">Tickets:</span>
             <span className="font-medium">
@@ -490,41 +529,68 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             </span>
           </div>
 
-          {state === "CommitOpen" && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Commit Deadline:</span>
-              <Countdown deadline={Number(lottery.commitDeadline)} />
-            </div>
-          )}
+          {(state === "Pending" || state === "CommitOpen") && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Commit Deadline:</span>
+                <span className="font-mono text-xs">
+                  {formatTimestamp(lottery.commitDeadline)}
+                </span>
+              </div>
 
-          {state === "CommitOpen" && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Committed Tickets:</span>
-              <span className="font-medium">
-                {committedCount} / {lottery.numberOfTickets.toString()}
-              </span>
-            </div>
-          )}
+              <div className="flex justify-between">
+                <span className="text-gray-600">Commit Period:</span>
+                <span className="font-medium">
+                  {commitPeriodMinutes} minutes
+                </span>
+              </div>
 
-          {state === "CommitOpen" && timeRemaining > 0 && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Reveal Time:</span>
-              <Countdown deadline={Number(lottery.revealTime)} />
-            </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Committed Tickets:</span>
+                <span className="font-medium">
+                  {committedCount} / {lottery.numberOfTickets.toString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600">Reveal Time:</span>
+                {canReveal ? (
+                  <span className="font-mono font-semibold text-green-600">
+                    Ready to reveal!
+                  </span>
+                ) : lottery.revealTime > 0n && timeRemaining > 0 ? (
+                  <span className="font-mono text-xs">
+                    {formatTimestamp(lottery.revealTime)}
+                  </span>
+                ) : lottery.revealTime > 0n ? (
+                  <span className="font-mono font-semibold text-red-600">
+                    Passed
+                  </span>
+                ) : (
+                  <span className="font-mono text-gray-500">
+                    Not set
+                  </span>
+                )}
+              </div>
+            </>
           )}
 
           {state === "RevealOpen" && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Revealed:</span>
-              <span className="font-medium text-green-600">✓ Complete</span>
-            </div>
-          )}
+            <>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Revealed:</span>
+                <span className="font-medium text-green-600">✓ Complete</span>
+              </div>
 
-          {state === "RevealOpen" && lottery.claimDeadline > 0 && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Claim Deadline:</span>
-              <Countdown deadline={Number(lottery.claimDeadline)} />
-            </div>
+              {lottery.claimDeadline > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Claim Deadline:</span>
+                  <span className="font-mono text-xs">
+                    {formatTimestamp(lottery.claimDeadline)}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -553,79 +619,81 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             {hasSecret(lottery.id) ? "View Secret" : "Restore Secret"}
           </Button>
 
-          {state === "CommitOpen" && !canReveal && (
-            <Alert variant={committedCount === 0 ? "destructive" : "default"}>
-              <AlertDescription className="text-sm">
-                {committedCount === 0 ? (
-                  <>
-                    <strong>No Committed Tickets!</strong>
-                    <br />
-                    Need at least 1 committed ticket to reveal the lottery.
-                    <br />
-                    <br />
-                    {timeRemaining > 0 ? (
-                      <>
-                        <strong>Time until reveal:</strong>
-                        <br />
-                        <span className="font-mono text-yellow-600">
-                          {Math.ceil(timeRemaining / 60)} minutes remaining
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <strong>Refund available in:</strong>
-                        <br />
-                        <Countdown
-                          deadline={Number(lottery.revealTime) + 24 * 60 * 60}
-                        />
-                        <br />
-                        <span className="text-xs text-muted-foreground">
-                          After 24 hours from reveal time, anyone can trigger a
-                          refund to return prizes to the creator.
-                        </span>
-                      </>
-                    )}
-                  </>
-                ) : timeRemaining > 0 ? (
-                  <>
-                    Waiting for reveal time...
-                    <br />
-                    <span className="font-mono text-yellow-600">
-                      {Math.ceil(timeRemaining / 60)} minutes remaining
-                    </span>
-                    <br />
+          {(state === "Pending" || state === "CommitOpen") && canReveal && (
+            <Button onClick={handleRevealClick} className="w-full" disabled={isRevealing}>
+              {isRevealing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Revealing...
+                </>
+              ) : (
+                "Reveal Lottery"
+              )}
+            </Button>
+          )}
+
+          {(state === "Pending" || state === "CommitOpen") && !canReveal && timeRemaining <= 0 && committedCount === 0 && (
+            <>
+              <Alert variant="destructive">
+                <AlertDescription className="text-sm">
+                  <strong>No Committed Tickets!</strong>
+                  <br />
+                  Need at least 1 committed ticket to reveal the lottery.
+                  <br />
+                  <br />
+                  {lottery.revealTime > 0n ? (
+                    <>
+                      <strong>Refund available in:</strong>
+                      <br />
+                      <Countdown
+                        deadline={Number(lottery.revealTime) + 24 * 60 * 60}
+                      />
+                      <br />
+                      <span className="text-xs text-muted-foreground">
+                        After 24 hours from reveal time, anyone can trigger a
+                        refund to return prizes to the creator.
+                      </span>
+                    </>
+                  ) : (
                     <span className="text-xs text-muted-foreground">
-                      {committedCount} ticket{committedCount !== 1 ? 's' : ''} committed
+                      Refund will be available 24 hours after reveal time.
                     </span>
-                  </>
-                ) : null}
+                  )}
+                </AlertDescription>
+              </Alert>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-full">
+                    <Button disabled className="w-full">
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Reveal Lottery
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Need at least 1 committed ticket</p>
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
+
+          {(state === "Pending" || state === "CommitOpen") && !canReveal && timeRemaining > 0 && (
+            <Alert>
+              <AlertDescription className="text-sm">
+                Waiting for reveal time...
+                <br />
+                <span className="font-mono text-yellow-600">
+                  {Math.ceil(timeRemaining / 60)} minutes remaining
+                </span>
+                <br />
+                <span className="text-xs text-muted-foreground">
+                  {committedCount} ticket{committedCount !== 1 ? 's' : ''} committed
+                </span>
               </AlertDescription>
             </Alert>
           )}
 
-          {state === "CommitOpen" && canReveal && (
-            <Button onClick={handleRevealClick} className="w-full">
-              Reveal Lottery
-            </Button>
-          )}
-
-          {state === "CommitOpen" && !canReveal && timeRemaining <= 0 && committedCount === 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-full">
-                  <Button disabled className="w-full">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Reveal Lottery
-                  </Button>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Need at least 1 committed ticket</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {state === "CommitOpen" && canRefund && (
+          {(state === "Pending" || state === "CommitOpen") && canRefund && (
             <Button
               onClick={refund}
               disabled={isRefunding}

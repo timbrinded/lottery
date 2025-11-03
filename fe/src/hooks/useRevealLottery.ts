@@ -3,7 +3,7 @@ import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from 
 import { useLotteryFactoryAddress } from '@/contracts/hooks'
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory'
 import { toBytes } from 'viem'
-import { parseContractError, getErrorMessage } from '@/lib/errors'
+import { parseContractError } from '@/lib/errors'
 
 interface UseRevealLotteryParams {
   lotteryId: bigint
@@ -64,17 +64,17 @@ export function useRevealLottery({
       setTimeRemaining(Math.max(0, timeDiff))
 
       // Can reveal if:
-      // 1. State is CommitOpen (1)
+      // 1. State is Pending (0) or CommitOpen (1) - support both for backward compatibility
       // 2. Commit deadline has passed
       // 3. Reveal time has arrived
       // 4. At least 1 ticket is committed
-      const isCommitOpen = state === 1
+      const isValidState = state === 0 || state === 1
       const commitDeadlinePassed = now >= commitDeadline
       const revealTimeReached = now >= revealTime
       const hasMinimumCommits = committedCount >= 1
 
       console.log(`[useRevealLottery] Reveal check for lottery ${lotteryId}:`, {
-        isCommitOpen,
+        isValidState,
         commitDeadlinePassed,
         revealTimeReached,
         hasMinimumCommits,
@@ -85,7 +85,7 @@ export function useRevealLottery({
         revealTime,
       })
 
-      setCanReveal(isCommitOpen && commitDeadlinePassed && revealTimeReached && hasMinimumCommits)
+      setCanReveal(isValidState && commitDeadlinePassed && revealTimeReached && hasMinimumCommits)
     }
 
     checkRevealStatus()
@@ -131,8 +131,8 @@ export function useRevealLottery({
     // Client-side validation
     const now = Math.floor(Date.now() / 1000)
 
-    if (state !== 1) {
-      setError(new Error('Lottery is not in CommitOpen state'))
+    if (state !== 0 && state !== 1) {
+      setError(new Error('Lottery is not in a valid state for revealing'))
       return
     }
 
