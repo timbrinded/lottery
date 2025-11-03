@@ -9,9 +9,7 @@
 export enum ContractError {
   CommitDeadlinePassed = 'CommitDeadlinePassed',
   CommitPeriodNotClosed = 'CommitPeriodNotClosed',
-  RandomnessBlockNotReached = 'RandomnessBlockNotReached',
-  BlockhashExpired = 'BlockhashExpired',
-  BlockhashUnavailable = 'BlockhashUnavailable',
+  InsufficientCommittedTickets = 'InsufficientCommittedTickets',
   InvalidCreatorSecret = 'InvalidCreatorSecret',
   TicketNotCommitted = 'TicketNotCommitted',
   TicketAlreadyRedeemed = 'TicketAlreadyRedeemed',
@@ -32,9 +30,7 @@ export enum ContractError {
 const CONTRACT_ERROR_MESSAGES: Record<ContractError, string> = {
   [ContractError.CommitDeadlinePassed]: 'Commit period has ended',
   [ContractError.CommitPeriodNotClosed]: 'Commit period must be closed before revealing',
-  [ContractError.RandomnessBlockNotReached]: 'Please wait for randomness block to arrive',
-  [ContractError.BlockhashExpired]: 'Reveal window expired, lottery can be refunded',
-  [ContractError.BlockhashUnavailable]: 'Block hash unavailable, please try again',
+  [ContractError.InsufficientCommittedTickets]: 'Need at least 1 committed ticket to reveal',
   [ContractError.InvalidCreatorSecret]: 'Invalid creator secret',
   [ContractError.TicketNotCommitted]: 'You must commit before claiming',
   [ContractError.TicketAlreadyRedeemed]: 'Prize already claimed',
@@ -84,22 +80,14 @@ export function parseContractError(errorMessage: string): string {
 }
 
 /**
- * Get a user-friendly error message with additional context
+ * Get a user-friendly error message
  * @param error - The error object
- * @param context - Additional context (e.g., blocks remaining)
  * @returns Formatted error message
  */
-export function getErrorMessage(error: Error | null, context?: { blocksRemaining?: number }): string {
+export function getErrorMessage(error: Error | null): string {
   if (!error) return '';
 
-  const baseMessage = parseContractError(error.message);
-
-  // Add context for specific errors
-  if (baseMessage.includes('randomness block') && context?.blocksRemaining !== undefined) {
-    return `${baseMessage} (${context.blocksRemaining} blocks remaining)`;
-  }
-
-  return baseMessage;
+  return parseContractError(error.message);
 }
 
 /**
@@ -127,18 +115,16 @@ export function isNetworkError(error: Error | null): boolean {
 /**
  * Format error for display in UI
  * @param error - The error object
- * @param context - Additional context
  * @returns Object with title and description for Alert/Toast
  */
 export function formatErrorForDisplay(
-  error: Error | null,
-  context?: { blocksRemaining?: number }
+  error: Error | null
 ): { title: string; description: string } {
   if (!error) {
     return { title: '', description: '' };
   }
 
-  const message = getErrorMessage(error, context);
+  const message = getErrorMessage(error);
 
   // Determine title based on error type
   let title = 'Error';

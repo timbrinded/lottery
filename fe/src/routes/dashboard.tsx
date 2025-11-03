@@ -17,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/shared/Countdown";
 import { BlockCountdown } from "@/components/shared/BlockCountdown";
-import { useCloseCommitPeriod } from "@/hooks/useCloseCommitPeriod";
 import { useRevealLottery } from "@/hooks/useRevealLottery";
 import { useRefundLottery } from "@/hooks/useRefundLottery";
 import { RevealLotteryModal } from "@/components/lottery/RevealLotteryModal";
@@ -50,7 +49,6 @@ interface LotteryData {
   commitDeadline: bigint;
   revealTime: bigint;
   claimDeadline: bigint;
-  randomnessBlock: bigint;
   state: number;
   createdAt: bigint;
 }
@@ -141,7 +139,8 @@ function DashboardPage() {
       });
 
       if (result.status === "success" && result.result) {
-        // Contract returns tuple as array: [creator, creatorCommitment, totalPrizePool, commitDeadline, randomnessBlock, revealTime, claimDeadline, randomSeed, state, createdAt, sponsoredGasPool, sponsoredGasUsed]
+        // Contract returns tuple as array: [creator, creatorCommitment, totalPrizePool, commitDeadline, revealTime, claimDeadline, randomSeed, state, createdAt, sponsoredGasPool, sponsoredGasUsed]
+        // Note: randomnessBlock field removed in new contract version
         const lotteryData = result.result as any[];
 
         // Check if we have valid data
@@ -176,7 +175,6 @@ function DashboardPage() {
             commitDeadline: lotteryData[3] as bigint,
             revealTime: lotteryData[5] as bigint,
             claimDeadline: lotteryData[6] as bigint,
-            randomnessBlock: lotteryData[4] as bigint,
             state: Number(lotteryData[8]),
             createdAt: lotteryData[9] as bigint,
           });
@@ -213,7 +211,6 @@ function DashboardPage() {
           commitDeadline: log.args.commitDeadline,
           revealTime: log.args.revealTime,
           claimDeadline: BigInt(0), // Will be set after reveal
-          randomnessBlock: BigInt(0), // Will be set when commit closes
           state: 1, // CommitOpen
           createdAt: BigInt(Math.floor(Date.now() / 1000)),
         };
@@ -411,27 +408,17 @@ function LotteryCard({ lottery }: LotteryCardProps) {
   })();
 
   const {
-    closeCommit,
-    isLoading: isClosing,
-    isSuccess: closeSuccess,
-    error: closeError,
-    canClose,
-  } = useCloseCommitPeriod({
-    lotteryId: lottery.id,
-    commitDeadline: Number(lottery.commitDeadline),
-  });
-
-  const {
     reveal,
     isLoading: isRevealing,
     isSuccess: revealSuccess,
     error: revealError,
     canReveal,
     timeRemaining,
-    blocksRemaining,
+    committedCount,
   } = useRevealLottery({
     lotteryId: lottery.id,
-    randomnessBlock: lottery.randomnessBlock,
+    state: lottery.state,
+    commitDeadline: Number(lottery.commitDeadline),
     revealTime: Number(lottery.revealTime),
   });
 
@@ -448,24 +435,26 @@ function LotteryCard({ lottery }: LotteryCardProps) {
 
   // Debug logging
   useEffect(() => {
-    if (state === "CommitClosed") {
+    if (state === "CommitOpen" || state === "CommitClosed") {
       console.log(`Lottery ${lottery.id} reveal status:`, {
         canReveal,
         timeRemaining,
-        blocksRemaining,
+        committedCount,
         revealTime: lottery.revealTime,
-        randomnessBlock: lottery.randomnessBlock,
+        commitDeadline: lottery.commitDeadline,
+        state: lottery.state,
         now: Math.floor(Date.now() / 1000),
       });
     }
   }, [
     canReveal,
     timeRemaining,
-    blocksRemaining,
+    committedCount,
     state,
     lottery.id,
     lottery.revealTime,
-    lottery.randomnessBlock,
+    lottery.commitDeadline,
+    lottery.state,
   ]);
 
   const handleReveal = (secret: string) => {
@@ -519,11 +508,11 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             </div>
           )}
 
-          {state === "CommitClosed" && lottery.randomnessBlock > 0 && (
+          {state === "CommitOpen" && (
             <div className="flex justify-between">
-              <span className="text-gray-600">Randomness Block:</span>
-              <span className="font-mono text-sm">
-                {lottery.randomnessBlock.toString()}
+              <span className="text-gray-600">Committed Tickets:</span>
+              <span className="font-medium">
+                {committedCount} / {lottery.numberOfTickets.toString()}
               </span>
             </div>
           )}
@@ -568,80 +557,63 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             {hasSecret(lottery.id) ? "View Secret" : "Restore Secret"}
           </Button>
 
-          {state === "CommitOpen" && canClose && (
-            <Button
-              onClick={closeCommit}
-              disabled={isClosing}
-              className="w-full"
-              variant="outline"
-            >
-              {isClosing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Closing...
-                </>
-              ) : (
-                "Close Commit Period"
-              )}
-            </Button>
+          {state === "CommitOpen" && !canReveal && (
+            <Alert variant={committedCount === 0 ? "destructive" : "default"}>
+              <AlertDescription className="text-sm">
+                {committedCount === 0 ? (
+                  <>
+                    <strong>No Committed Tickets!</strong>
+                    <br />
+                    Need at least 1 committed ticket to reveal the lottery.
+                    <br />
+                    <br />
+                    {timeRemaining > 0 ? (
+                      <>
+                        <strong>Time until reveal:</strong>
+                        <br />
+                        <span className="font-mono text-yellow-600">
+                          {Math.ceil(timeRemaining / 60)} minutes remaining
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <strong>Refund available in:</strong>
+                        <br />
+                        <Countdown
+                          deadline={Number(lottery.revealTime) + 24 * 60 * 60}
+                        />
+                        <br />
+                        <span className="text-xs text-muted-foreground">
+                          After 24 hours from reveal time, anyone can trigger a
+                          refund to return prizes to the creator.
+                        </span>
+                      </>
+                    )}
+                  </>
+                ) : timeRemaining > 0 ? (
+                  <>
+                    Waiting for reveal time...
+                    <br />
+                    <span className="font-mono text-yellow-600">
+                      {Math.ceil(timeRemaining / 60)} minutes remaining
+                    </span>
+                    <br />
+                    <span className="text-xs text-muted-foreground">
+                      {committedCount} ticket{committedCount !== 1 ? 's' : ''} committed
+                    </span>
+                  </>
+                ) : null}
+              </AlertDescription>
+            </Alert>
           )}
 
-          {state === "CommitClosed" &&
-            !canReveal &&
-            lottery.randomnessBlock > 0 && (
-              <Alert
-                variant={
-                  blocksRemaining === 0 && timeRemaining === 0
-                    ? "destructive"
-                    : "default"
-                }
-              >
-                <AlertDescription className="text-sm">
-                  {blocksRemaining > 0 ? (
-                    <>
-                      Waiting for randomness block...
-                      <br />
-                      <BlockCountdown targetBlock={lottery.randomnessBlock} />
-                    </>
-                  ) : timeRemaining > 0 ? (
-                    <>
-                      Block reached! Waiting for reveal time...
-                      <br />
-                      <span className="font-mono text-yellow-600">
-                        {Math.ceil(timeRemaining / 60)} minutes remaining
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <strong>Blockhash Expired!</strong>
-                      <br />
-                      The randomness block is more than 256 blocks old. The
-                      lottery cannot be revealed normally.
-                      <br />
-                      <br />
-                      <strong>Refund available in:</strong>
-                      <br />
-                      <Countdown
-                        deadline={Number(lottery.revealTime) + 24 * 60 * 60}
-                      />
-                      <br />
-                      <span className="text-xs text-muted-foreground">
-                        After 24 hours from reveal time, anyone can trigger a
-                        refund to return prizes to the creator.
-                      </span>
-                    </>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-          {state === "CommitClosed" && canReveal && (
+          {state === "CommitOpen" && canReveal && (
             <Button onClick={handleRevealClick} className="w-full">
               Reveal Lottery
             </Button>
           )}
 
-          {state === "CommitClosed" && canRefund && (
+          {state === "CommitOpen" && canRefund && (
             <Button
               onClick={refund}
               disabled={isRefunding}
@@ -654,7 +626,7 @@ function LotteryCard({ lottery }: LotteryCardProps) {
                   Refunding...
                 </>
               ) : (
-                "Refund Lottery (Blockhash Expired)"
+                "Refund Lottery (Not Revealed)"
               )}
             </Button>
           )}
@@ -671,22 +643,6 @@ function LotteryCard({ lottery }: LotteryCardProps) {
             <Alert variant="destructive">
               <AlertDescription className="text-sm">
                 {revealError.message}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {closeError && (
-            <Alert variant="destructive">
-              <AlertDescription className="text-sm">
-                {closeError.message}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {closeSuccess && (
-            <Alert>
-              <AlertDescription className="text-sm text-green-600">
-                Commit period closed successfully!
               </AlertDescription>
             </Alert>
           )}

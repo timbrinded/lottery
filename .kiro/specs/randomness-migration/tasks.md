@@ -58,15 +58,15 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Update test comments and documentation
     - _Requirements: 1.1_
 
-- [ ] 2. Update frontend hooks
+- [x] 2. Update frontend hooks
 
-  - [ ] 2.1 Delete useCloseCommitPeriod hook
+  - [x] 2.1 Delete useCloseCommitPeriod hook
     - Delete `fe/src/hooks/useCloseCommitPeriod.ts` file
     - Search codebase for imports of this hook
     - Remove all imports and usages
     - _Requirements: 2.4_
 
-  - [ ] 2.2 Update useRevealLottery hook
+  - [x] 2.2 Update useRevealLottery hook
     - Remove randomnessBlock checks from reveal conditions
     - Remove blocksRemaining from return value
     - Update canReveal logic to check: state === CommitOpen && now >= commitDeadline && now >= revealTime
@@ -75,13 +75,13 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Update hook return type to remove block-related fields
     - _Requirements: 2.1, 2.3_
 
-  - [ ] 2.3 Update useLotteryState hook (if exists)
+  - [x] 2.3 Update useLotteryState hook (if exists)
     - Update LotteryState type definition to remove CommitClosed
     - Update any state transition logic
     - Update state display helpers
     - _Requirements: 2.2, 2.5_
 
-  - [ ] 2.4 Search for and update any other hooks using randomnessBlock
+  - [x] 2.4 Search for and update any other hooks using randomnessBlock
     - Search codebase for "randomnessBlock" references
     - Update or remove each reference
     - Verify no broken imports or undefined references
