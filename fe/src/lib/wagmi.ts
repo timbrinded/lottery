@@ -52,30 +52,30 @@ export const arcTestnet = defineChain({
 });
 
 // Arc Mainnet Chain Configuration
-export const arcMainnet = defineChain({
-  id: 5678, // Replace with actual Arc mainnet chain ID
-  name: "Arc",
-  nativeCurrency: {
-    name: "USDC",
-    symbol: "USDC",
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: ["https://rpc.arc.network"], // Replace with actual Arc mainnet RPC
-    },
-    public: {
-      http: ["https://rpc.arc.network"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "Arc Explorer",
-      url: "https://explorer.arc.network", // Replace with actual Arc mainnet explorer
-    },
-  },
-  testnet: false,
-});
+// export const arcMainnet = defineChain({
+//   id: 5678, // Replace with actual Arc mainnet chain ID
+//   name: "Arc",
+//   nativeCurrency: {
+//     name: "USDC",
+//     symbol: "USDC",
+//     decimals: 18,
+//   },
+//   rpcUrls: {
+//     default: {
+//       http: ["https://rpc.arc.network"], // Replace with actual Arc mainnet RPC
+//     },
+//     public: {
+//       http: ["https://rpc.arc.network"],
+//     },
+//   },
+//   blockExplorers: {
+//     default: {
+//       name: "Arc Explorer",
+//       url: "https://explorer.arc.network", // Replace with actual Arc mainnet explorer
+//     },
+//   },
+//   testnet: false,
+// });
 
 // Determine available chains based on environment
 const isDevelopment = import.meta.env.DEV;
@@ -83,8 +83,8 @@ const isDevelopment = import.meta.env.DEV;
 // In development, allow switching between all networks
 // In production, only show mainnet
 export const availableChains = isDevelopment
-  ? [localhost, arcTestnet, arcMainnet]
-  : [arcMainnet];
+  ? [localhost, arcTestnet]
+  : [arcTestnet];
 
 // Log available networks
 console.log(
@@ -100,7 +100,7 @@ export const config = getDefaultConfig({
   transports: {
     [localhost.id]: http(),
     [arcTestnet.id]: http(),
-    [arcMainnet.id]: http(),
+    // [arcMainnet.id]: http(),
   },
   ssr: false,
 });

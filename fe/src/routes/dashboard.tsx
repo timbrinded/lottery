@@ -148,7 +148,6 @@ function DashboardPage() {
     const userLotteries: LotteryData[] = [];
 
     lotteriesData.forEach((result, index) => {
-      const lotteryId = lotteryIds[index];
       const detailsResult = lotteryDetailsData?.[index];
 
       if (result.status === "success" && result.result && detailsResult?.status === "success" && detailsResult.result) {

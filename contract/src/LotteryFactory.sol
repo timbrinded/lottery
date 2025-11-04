@@ -13,7 +13,7 @@ contract LotteryFactory is ReentrancyGuard {
     // ============ Constants ============
     
     /// @notice USDC token address on Arc testnet
-    address public constant USDC = 0xb764428a29EAEbe8e2301F5924746f818B331F5A;
+    address public constant USDC = 0xb764428a29EAEbe8e2301F5924746F818b331F5A;
     
     // ============ Enums ============
 

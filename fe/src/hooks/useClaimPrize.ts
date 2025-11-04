@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWriteLotteryFactory } from '@/contracts/hooks';
-import { useWaitForTransactionReceipt, useGasPrice, useSimulateContract } from 'wagmi';
+import { useWaitForTransactionReceipt, useGasPrice } from 'wagmi';
 import { parseContractError } from '@/lib/errors';
-import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
-import { useLotteryFactoryAddress } from '@/contracts/hooks';
 
 interface UseClaimPrizeParams {
   lotteryId: bigint;

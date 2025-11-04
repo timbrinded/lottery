@@ -1,7 +1,7 @@
 import { useChainId, useSwitchChain } from 'wagmi'
 import { useState } from 'react'
 import { ChevronDown, Check, Wifi } from 'lucide-react'
-import { localhost, arcTestnet, arcMainnet, availableChains } from '@/lib/wagmi'
+import { localhost, arcTestnet, availableChains } from '@/lib/wagmi'
 
 export default function NetworkSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
@@ -25,14 +25,14 @@ export default function NetworkSwitcher() {
         chain: arcTestnet,
       }
     }
-    if (id === arcMainnet.id) {
-      return {
-        name: 'Arc Mainnet',
-        color: 'bg-green-500',
-        icon: '🌐',
-        chain: arcMainnet,
-      }
-    }
+    // if (id === arcMainnet.id) {
+    //   return {
+    //     name: 'Arc Mainnet',
+    //     color: 'bg-green-500',
+    //     icon: '🌐',
+    //     chain: arcMainnet,
+    //   }
+    // }
     return {
       name: 'Unknown',
       color: 'bg-gray-500',

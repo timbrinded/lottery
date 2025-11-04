@@ -254,9 +254,9 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Add links to new flow documentation
     - _Requirements: 5.1_
 
-- [-] 7. Create "How It Works" modal and navigation updates
+- [x] 7. Create "How It Works" modal and navigation updates
 
-  - [ ] 7.1 Create HowItWorksModal component
+  - [x] 7.1 Create HowItWorksModal component
     - Create `fe/src/components/shared/HowItWorksModal.tsx`
     - Use shadcn Dialog component for modal
     - Create multi-panel layout with tabs or carousel
@@ -264,7 +264,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Make it visually engaging with icons and illustrations
     - _Requirements: 6.1_
 
-  - [ ] 7.2 Design panel content for "How It Works"
+  - [x] 7.2 Design panel content for "How It Works"
     - **Panel 1: "Create a Mystery Lottery"**
       - Title: "🎁 Create Your Mystery Lottery"
       - Content: "Set your prizes, choose how many tickets, and pick your deadlines. We'll generate unique ticket codes for you to share."
@@ -287,7 +287,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
       - Visual: Shield or checkmark icon
     - _Requirements: 6.1_
 
-  - [ ] 7.3 Add "How It Works" button to top navigation
+  - [x] 7.3 Add "How It Works" button to top navigation
     - Open `fe/src/routes/__root.tsx` or main layout component
     - Add "How It Works" button to top nav bar (next to wallet connect)
     - Button should open HowItWorksModal
@@ -295,7 +295,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Make it accessible from all pages
     - _Requirements: 6.1_
 
-  - [ ] 7.4 Update side navigation drawer with GitHub link
+  - [x] 7.4 Update side navigation drawer with GitHub link
     - Open side nav drawer component (if exists) or create one
     - Add GitHub logo and link at bottom of drawer
     - Link to: `https://github.com/[your-repo]` (update with actual repo)
@@ -303,34 +303,34 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Style: Subtle, secondary color, small text "View on GitHub"
     - _Requirements: 6.1_
 
-  - [-] 7.5 Install shadcn dialog component if needed
+  - [x] 7.5 Install shadcn dialog component if needed
     - Run: `cd fe && bunx shadcn@latest add dialog`
     - Run: `bunx shadcn@latest add tabs` (if using tabs for panels)
     - Verify components added to `fe/src/components/ui/`
     - _Requirements: 6.1_
 
-  - [ ] 7.6 Style the modal for mobile responsiveness
+  - [x] 7.6 Style the modal for mobile responsiveness
     - Ensure modal works on mobile (full screen on small devices)
     - Add swipe gestures for panel navigation on mobile
     - Test on various screen sizes
     - Add smooth transitions between panels
     - _Requirements: 6.1_
 
-- [ ] 8. Testing and verification
+- [x] 8. Testing and verification
 
-  - [ ] 8.1 Run smart contract test suite
+  - [x] 8.1 Run smart contract test suite
     - Execute `forge test -vvv` in contract directory
     - Verify all tests pass
     - Check gas snapshots if using `forge snapshot`
     - _Requirements: 1.1_
 
-  - [ ] 8.2 Run frontend build
+  - [x] 8.2 Run frontend build
     - Execute `bun run build` in fe directory
     - Verify no TypeScript errors
     - Verify no missing imports or undefined references
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 8.3 Manual testing on local network
+  - [x] 8.3 Manual testing on local network
     - Start local Anvil node
     - Deploy updated contract
     - Test full lottery flow: create → commit (1+ tickets) → reveal → claim
@@ -339,7 +339,7 @@ This plan covers updating tests, frontend, and documentation to support the new 
     - Test "How It Works" modal on all pages
     - _Requirements: All_
 
-  - [ ] 8.4 Deploy to testnet and verify
+  - [x] 8.4 Deploy to testnet and verify
     - Deploy updated contract to Arc testnet
     - Update frontend contract address
     - Test full flow on testnet

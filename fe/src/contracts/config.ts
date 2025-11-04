@@ -16,7 +16,7 @@ export const LOTTERY_FACTORY_ADDRESSES: Record<number, Address> = {
   5042002: '0x0000000000000000000000000000000000000000', // Set after deploying to local Anvil
   
   // Arc Mainnet
-  5678: '0x0000000000000000000000000000000000000000', // Replace with deployed mainnet address
+  // 5678: '0x0000000000000000000000000000000000000000', // Replace with deployed mainnet address
 }
 
 // Get contract address for current chain

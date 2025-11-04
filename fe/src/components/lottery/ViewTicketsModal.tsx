@@ -109,7 +109,7 @@ export function ViewTicketsModal({
     return ticketSecrets.map((_, index) => index);
   }, [ticketSecrets]);
 
-  const { data: ticketCommitments, isLoading: isLoadingCommitments, refetch } = useReadContracts({
+  const { data: ticketCommitments, isLoading: isLoadingCommitments } = useReadContracts({
     contracts: ticketIndices.map((index) => ({
       address: contractAddress as `0x${string}`,
       abi: LOTTERY_FACTORY_ABI as any,

@@ -1,11 +1,14 @@
 import { Link } from '@tanstack/react-router'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useState } from 'react'
-import { Home, Menu, X, Plus, LayoutDashboard, Ticket } from 'lucide-react'
+import { Home, Menu, X, Plus, LayoutDashboard, Ticket, HelpCircle, Github } from 'lucide-react'
 import NetworkSwitcher from './NetworkSwitcher'
+import { HowItWorksModal } from './shared/HowItWorksModal'
+import { Button } from './ui/button'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
 
   return (
     <>
@@ -25,10 +28,21 @@ export default function Header() {
         </h1>
         
         <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowHowItWorks(true)}
+            className="text-white hover:bg-gray-700"
+            aria-label="How it works"
+          >
+            <HelpCircle size={20} />
+          </Button>
           <NetworkSwitcher />
           <ConnectButton showBalance={false} chainStatus="none" />
         </div>
       </header>
+
+      <HowItWorksModal open={showHowItWorks} onOpenChange={setShowHowItWorks} />
 
       <aside
         className={`fixed top-0 left-0 h-full w-80 bg-gray-900 text-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
@@ -99,6 +113,18 @@ export default function Header() {
             <span className="font-medium">Redeem Ticket</span>
           </Link>
         </nav>
+
+        <div className="p-4 border-t border-gray-700">
+          <a
+            href="https://github.com/yourusername/mystery-lottery"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 p-3 rounded-lg hover:bg-gray-800 transition-colors text-gray-400 hover:text-white"
+          >
+            <Github size={18} />
+            <span className="text-sm">View on GitHub</span>
+          </a>
+        </div>
       </aside>
     </>
   )

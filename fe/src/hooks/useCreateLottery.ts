@@ -60,8 +60,11 @@ export function useCreateLottery(chainId: number): CreateLotteryResult {
         eventName: 'LotteryCreated',
       });
 
-      if (logs.length > 0 && logs[0].args.lotteryId) {
-        return logs[0].args.lotteryId as bigint;
+      if (logs.length > 0) {
+        const log = logs[0] as any;
+        if (log.args && 'lotteryId' in log.args) {
+          return log.args.lotteryId as bigint;
+        }
       }
     } catch (err) {
       console.error('Failed to parse lottery ID from logs:', err);

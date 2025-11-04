@@ -65,6 +65,9 @@ export function useWriteLotteryFactory() {
     args: TArgs,
     options?: { value?: bigint; gas?: bigint }
   ) => {
+    if (!address) {
+      throw new Error('LotteryFactory contract not deployed on this chain')
+    }
     return writeContract({
       address,
       abi: LOTTERY_FACTORY_ABI,
