@@ -67,7 +67,7 @@
   - Verify no broken imports or references to deleted files
   - _Requirements: All_
 
-- [ ] 9. Add QR code scanner functionality
+- [x] 9. Add QR code scanner functionality
   - Create `QRScanner` component for scanning QR codes
   - Add QR scanner option to `/participant/ticket` route
   - Add "Scan QR Code" button to participant dashboard

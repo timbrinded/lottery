@@ -22,10 +22,11 @@ import { ShareButtons } from "@/components/shared/ShareButtons";
 import { useClaimPrize } from "@/hooks/useClaimPrize";
 import { parseTicketInput, encodeTicketCode } from "@/lib/crypto";
 import { formatErrorForDisplay } from "@/lib/errors";
-import { AlertCircle, Ticket, CheckCircle } from "lucide-react";
+import { AlertCircle, Ticket, CheckCircle, Camera } from "lucide-react";
 import { useState } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { formatEther } from "viem";
+import { QRScanner } from "@/components/shared/QRScanner";
 
 // Define search params type - use opaque code instead of exposing components
 type TicketSearchParams = {
@@ -46,6 +47,7 @@ function TicketPage() {
   const navigate = useNavigate();
   const [ticketInput, setTicketInput] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   // Decode the ticket code if present
   const decodedTicket = code ? parseTicketInput(code) : null;
@@ -185,6 +187,31 @@ function TicketPage() {
     claim();
   };
 
+  const handleQRScan = (data: string) => {
+    setShowScanner(false);
+    setTicketInput(data);
+    
+    // Automatically process the scanned code
+    const parsed = parseTicketInput(data);
+    if (parsed) {
+      let opaqueCode = data;
+
+      if (data.length < 50 || /[?&=:/]/.test(data)) {
+        opaqueCode = encodeTicketCode(
+          BigInt(parsed.lottery),
+          parseInt(parsed.ticket),
+          parsed.secret
+        );
+      }
+
+      navigate({ to: "/participant/ticket", search: { code: opaqueCode } });
+    } else {
+      setParseError(
+        "Invalid QR code format. Please scan a valid ticket QR code."
+      );
+    }
+  };
+
   const getStateBadge = () => {
     if (isFinalized) {
       return <Badge variant="secondary">Finalized</Badge>;
@@ -214,85 +241,113 @@ function TicketPage() {
   if (!code || !decodedTicket) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-                <Ticket className="w-6 h-6 text-primary" />
+        {showScanner ? (
+          <QRScanner
+            onScan={handleQRScan}
+            onClose={() => setShowScanner(false)}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                  <Ticket className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Redeem Your Ticket</CardTitle>
+                  <CardDescription>
+                    Paste your ticket link or scan QR code
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle>Redeem Your Ticket</CardTitle>
-                <CardDescription>
-                  Paste your ticket link or redemption code
-                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>How to redeem:</strong>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    <li>
+                      • Paste the ticket code you received from the lottery
+                      creator
+                    </li>
+                    <li>• Or scan the QR code provided</li>
+                    <li>• Accepted formats:</li>
+                    <li className="ml-4 text-xs">
+                      <strong>Compact code (recommended):</strong>
+                    </li>
+                    <li className="ml-6 text-xs font-mono text-muted-foreground">
+                      2Xk9pQr7vB3mN8cF...
+                    </li>
+                    <li className="ml-4 text-xs">
+                      <strong>Full URL:</strong>
+                    </li>
+                    <li className="ml-6 text-xs font-mono text-muted-foreground">
+                      https://app.com/ticket?code=2Xk9pQr7vB3mN8cF...
+                    </li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Ticket URL or Code
+                  </label>
+                  <textarea
+                    placeholder="Paste your ticket link here..."
+                    value={ticketInput}
+                    onChange={(e) => {
+                      setTicketInput(e.target.value);
+                      setParseError(null);
+                    }}
+                    className="w-full px-3 py-2 border rounded-md bg-background font-mono text-sm min-h-[100px] resize-y"
+                  />
+                  {parseError && (
+                    <p className="text-sm text-destructive mt-2">{parseError}</p>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!ticketInput.trim()}
+                  className="w-full"
+                  size="lg"
+                >
+                  View Ticket
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => setShowScanner(true)}
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                >
+                  <Camera className="mr-2 h-5 w-5" />
+                  Scan QR Code
+                </Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>How to redeem:</strong>
-                <ul className="mt-2 space-y-1 text-sm">
-                  <li>
-                    • Paste the ticket code you received from the lottery
-                    creator
-                  </li>
-                  <li>• Or scan the QR code provided</li>
-                  <li>• Accepted formats:</li>
-                  <li className="ml-4 text-xs">
-                    <strong>Compact code (recommended):</strong>
-                  </li>
-                  <li className="ml-6 text-xs font-mono text-muted-foreground">
-                    2Xk9pQr7vB3mN8cF...
-                  </li>
-                  <li className="ml-4 text-xs">
-                    <strong>Full URL:</strong>
-                  </li>
-                  <li className="ml-6 text-xs font-mono text-muted-foreground">
-                    https://app.com/ticket?code=2Xk9pQr7vB3mN8cF...
-                  </li>
-                </ul>
-              </AlertDescription>
-            </Alert>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Ticket URL or Code
-                </label>
-                <textarea
-                  placeholder="Paste your ticket link here..."
-                  value={ticketInput}
-                  onChange={(e) => {
-                    setTicketInput(e.target.value);
-                    setParseError(null);
-                  }}
-                  className="w-full px-3 py-2 border rounded-md bg-background font-mono text-sm min-h-[100px] resize-y"
-                />
-                {parseError && (
-                  <p className="text-sm text-destructive mt-2">{parseError}</p>
-                )}
+              <div className="pt-4 border-t">
+                <p className="text-sm text-muted-foreground text-center">
+                  Don't have a ticket? Lottery creators will share ticket links
+                  with participants.
+                </p>
               </div>
-
-              <Button
-                onClick={handleSubmit}
-                disabled={!ticketInput.trim()}
-                className="w-full"
-                size="lg"
-              >
-                View Ticket
-              </Button>
-            </div>
-
-            <div className="pt-4 border-t">
-              <p className="text-sm text-muted-foreground text-center">
-                Don't have a ticket? Lottery creators will share ticket links
-                with participants.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }

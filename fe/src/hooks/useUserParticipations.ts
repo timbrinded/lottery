@@ -47,46 +47,76 @@ export function useUserParticipations(): UseUserParticipationsResult {
     error: counterError,
   } = useReadLotteryFactory('lotteryCounter', []);
 
-  // If not connected or no lotteries exist, return empty
-  if (!isConnected || !address || !lotteryCounter || lotteryCounter === 0n) {
-    return {
-      participations: [],
-      isLoading: isLoadingCounter,
-      error: counterError as Error | null,
-      hasParticipations: false,
-      unclaimedWinnings: [],
-    };
-  }
+  // Always call hooks for a fixed number of lotteries to avoid conditional hook calls
+  // We'll check up to 10 lotteries maximum
+  const MAX_LOTTERIES = 10;
+  
+  // Create array of lottery IDs to check (always same length)
+  const lotteryIds = Array.from({ length: MAX_LOTTERIES }, (_, i) => BigInt(i + 1));
 
-  // For now, we'll check the first few lotteries
-  // In production, you'd want to use events or a subgraph to efficiently find user participations
-  const lotteryIds = Array.from(
-    { length: Math.min(Number(lotteryCounter), 10) }, // Limit to first 10 for performance
-    (_, i) => BigInt(i + 1)
-  );
+  // Always call the same number of hooks
+  const lottery1 = useReadLotteryFactory('lotteries', [lotteryIds[0]]);
+  const tickets1 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[0]]);
+  
+  const lottery2 = useReadLotteryFactory('lotteries', [lotteryIds[1]]);
+  const tickets2 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[1]]);
+  
+  const lottery3 = useReadLotteryFactory('lotteries', [lotteryIds[2]]);
+  const tickets3 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[2]]);
+  
+  const lottery4 = useReadLotteryFactory('lotteries', [lotteryIds[3]]);
+  const tickets4 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[3]]);
+  
+  const lottery5 = useReadLotteryFactory('lotteries', [lotteryIds[4]]);
+  const tickets5 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[4]]);
+  
+  const lottery6 = useReadLotteryFactory('lotteries', [lotteryIds[5]]);
+  const tickets6 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[5]]);
+  
+  const lottery7 = useReadLotteryFactory('lotteries', [lotteryIds[6]]);
+  const tickets7 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[6]]);
+  
+  const lottery8 = useReadLotteryFactory('lotteries', [lotteryIds[7]]);
+  const tickets8 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[7]]);
+  
+  const lottery9 = useReadLotteryFactory('lotteries', [lotteryIds[8]]);
+  const tickets9 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[8]]);
+  
+  const lottery10 = useReadLotteryFactory('lotteries', [lotteryIds[9]]);
+  const tickets10 = useReadLotteryFactory('getLotteryTickets', [lotteryIds[9]]);
 
-  // Read lottery data for each lottery
-  const lotteryReads = lotteryIds.map((id) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { data: lotteryData } = useReadLotteryFactory('lotteries', [id]);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { data: ticketHashes } = useReadLotteryFactory('getLotteryTickets', [id]);
-    
-    return { id, lotteryData, ticketHashes };
-  });
+  const lotteryReads = [
+    { id: lotteryIds[0], lotteryData: lottery1.data, ticketHashes: tickets1.data },
+    { id: lotteryIds[1], lotteryData: lottery2.data, ticketHashes: tickets2.data },
+    { id: lotteryIds[2], lotteryData: lottery3.data, ticketHashes: tickets3.data },
+    { id: lotteryIds[3], lotteryData: lottery4.data, ticketHashes: tickets4.data },
+    { id: lotteryIds[4], lotteryData: lottery5.data, ticketHashes: tickets5.data },
+    { id: lotteryIds[5], lotteryData: lottery6.data, ticketHashes: tickets6.data },
+    { id: lotteryIds[6], lotteryData: lottery7.data, ticketHashes: tickets7.data },
+    { id: lotteryIds[7], lotteryData: lottery8.data, ticketHashes: tickets8.data },
+    { id: lotteryIds[8], lotteryData: lottery9.data, ticketHashes: tickets9.data },
+    { id: lotteryIds[9], lotteryData: lottery10.data, ticketHashes: tickets10.data },
+  ];
 
   // For each lottery, check all tickets to find user's participations
   const participations = useMemo(() => {
-    const results: LotteryParticipation[] = [];
+    // If not connected or no lotteries exist, return empty
+    if (!isConnected || !address || !lotteryCounter || lotteryCounter === 0n) {
+      return [];
+    }
 
-    for (const { id, lotteryData, ticketHashes } of lotteryReads) {
+    const results: LotteryParticipation[] = [];
+    const actualLotteryCount = Math.min(Number(lotteryCounter), MAX_LOTTERIES);
+
+    for (let i = 0; i < actualLotteryCount; i++) {
+      const { id, lotteryData, ticketHashes } = lotteryReads[i];
       if (!ticketHashes || !lotteryData) continue;
 
       const userTickets: TicketParticipation[] = [];
       const hashes = ticketHashes as any;
 
       // Check each ticket in this lottery
-      for (let i = 0; i < hashes.length; i++) {
+      for (let j = 0; j < hashes.length; j++) {
         // Read ticket data - we need to do this inline
         // In a real implementation, you'd batch these reads or use events
         // For now, we'll skip the individual ticket reads and rely on events
@@ -113,7 +143,7 @@ export function useUserParticipations(): UseUserParticipationsResult {
     }
 
     return results;
-  }, [lotteryReads]);
+  }, [lotteryReads, isConnected, address, lotteryCounter]);
 
   // Filter for unclaimed winnings
   const unclaimedWinnings = useMemo(() => {
