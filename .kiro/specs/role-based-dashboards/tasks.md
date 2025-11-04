@@ -59,7 +59,7 @@
   - Display winning notification when user has won and prize is unclaimed
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, 10.3, 10.4, 10.5, 11.1, 11.2, 11.3, 11.4, 11.5, 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 8. Clean up old routes
+- [x] 8. Clean up old routes
   - Delete `/dashboard.tsx` file (replaced by `/manager/index.tsx`)
   - Delete `/create.tsx` file (moved to `/manager/create.tsx`)
   - Delete `/ticket.tsx` file (moved to `/participant/ticket.tsx`)

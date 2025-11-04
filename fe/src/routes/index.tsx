@@ -45,7 +45,7 @@ function App() {
                   </Link>
                 )}
                 
-                <Link to="/ticket" className="w-full sm:w-auto">
+                <Link to="/participant" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     variant={isManager ? "outline" : "default"}

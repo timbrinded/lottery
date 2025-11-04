@@ -9,33 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TicketRouteImport } from './routes/ticket'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ParticipantIndexRouteImport } from './routes/participant/index'
 import { Route as ManagerIndexRouteImport } from './routes/manager/index'
 import { Route as ParticipantTicketRouteImport } from './routes/participant/ticket'
 import { Route as ManagerCreateRouteImport } from './routes/manager/create'
-import { Route as LotteryIdRouteImport } from './routes/lottery.$id'
 import { Route as ParticipantLotteryIdRouteImport } from './routes/participant/lottery/$id'
 import { Route as ManagerLotteryIdRouteImport } from './routes/manager/lottery/$id'
 
-const TicketRoute = TicketRouteImport.update({
-  id: '/ticket',
-  path: '/ticket',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CreateRoute = CreateRouteImport.update({
-  id: '/create',
-  path: '/create',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -61,11 +42,6 @@ const ManagerCreateRoute = ManagerCreateRouteImport.update({
   path: '/manager/create',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LotteryIdRoute = LotteryIdRouteImport.update({
-  id: '/lottery/$id',
-  path: '/lottery/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ParticipantLotteryIdRoute = ParticipantLotteryIdRouteImport.update({
   id: '/participant/lottery/$id',
   path: '/participant/lottery/$id',
@@ -79,10 +55,6 @@ const ManagerLotteryIdRoute = ManagerLotteryIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/create': typeof CreateRoute
-  '/dashboard': typeof DashboardRoute
-  '/ticket': typeof TicketRoute
-  '/lottery/$id': typeof LotteryIdRoute
   '/manager/create': typeof ManagerCreateRoute
   '/participant/ticket': typeof ParticipantTicketRoute
   '/manager': typeof ManagerIndexRoute
@@ -92,10 +64,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/create': typeof CreateRoute
-  '/dashboard': typeof DashboardRoute
-  '/ticket': typeof TicketRoute
-  '/lottery/$id': typeof LotteryIdRoute
   '/manager/create': typeof ManagerCreateRoute
   '/participant/ticket': typeof ParticipantTicketRoute
   '/manager': typeof ManagerIndexRoute
@@ -106,10 +74,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/create': typeof CreateRoute
-  '/dashboard': typeof DashboardRoute
-  '/ticket': typeof TicketRoute
-  '/lottery/$id': typeof LotteryIdRoute
   '/manager/create': typeof ManagerCreateRoute
   '/participant/ticket': typeof ParticipantTicketRoute
   '/manager/': typeof ManagerIndexRoute
@@ -121,10 +85,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/create'
-    | '/dashboard'
-    | '/ticket'
-    | '/lottery/$id'
     | '/manager/create'
     | '/participant/ticket'
     | '/manager'
@@ -134,10 +94,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/create'
-    | '/dashboard'
-    | '/ticket'
-    | '/lottery/$id'
     | '/manager/create'
     | '/participant/ticket'
     | '/manager'
@@ -147,10 +103,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/create'
-    | '/dashboard'
-    | '/ticket'
-    | '/lottery/$id'
     | '/manager/create'
     | '/participant/ticket'
     | '/manager/'
@@ -161,10 +113,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CreateRoute: typeof CreateRoute
-  DashboardRoute: typeof DashboardRoute
-  TicketRoute: typeof TicketRoute
-  LotteryIdRoute: typeof LotteryIdRoute
   ManagerCreateRoute: typeof ManagerCreateRoute
   ParticipantTicketRoute: typeof ParticipantTicketRoute
   ManagerIndexRoute: typeof ManagerIndexRoute
@@ -175,27 +123,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ticket': {
-      id: '/ticket'
-      path: '/ticket'
-      fullPath: '/ticket'
-      preLoaderRoute: typeof TicketRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/create': {
-      id: '/create'
-      path: '/create'
-      fullPath: '/create'
-      preLoaderRoute: typeof CreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -231,13 +158,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManagerCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lottery/$id': {
-      id: '/lottery/$id'
-      path: '/lottery/$id'
-      fullPath: '/lottery/$id'
-      preLoaderRoute: typeof LotteryIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/participant/lottery/$id': {
       id: '/participant/lottery/$id'
       path: '/participant/lottery/$id'
@@ -257,10 +177,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CreateRoute: CreateRoute,
-  DashboardRoute: DashboardRoute,
-  TicketRoute: TicketRoute,
-  LotteryIdRoute: LotteryIdRoute,
   ManagerCreateRoute: ManagerCreateRoute,
   ParticipantTicketRoute: ParticipantTicketRoute,
   ManagerIndexRoute: ManagerIndexRoute,
