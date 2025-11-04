@@ -3,9 +3,18 @@ import { useEffect, useState } from 'react';
 interface CountdownProps {
   deadline: number; // Unix timestamp in seconds
   className?: string;
+  mode?: 'precise' | 'friendly'; // New prop for display mode
+  prefix?: string; // Optional prefix text (e.g., "Finishes in")
+  suffix?: string; // Optional suffix text (e.g., "!")
 }
 
-export function Countdown({ deadline, className = '' }: CountdownProps) {
+export function Countdown({ 
+  deadline, 
+  className = '', 
+  mode = 'precise',
+  prefix = '',
+  suffix = ''
+}: CountdownProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [urgency, setUrgency] = useState<'green' | 'yellow' | 'red'>('green');
 
@@ -23,7 +32,7 @@ export function Countdown({ deadline, className = '' }: CountdownProps) {
       const remaining = deadlineNum - now;
 
       if (remaining <= 0) {
-        setTimeRemaining('Deadline passed');
+        setTimeRemaining(mode === 'friendly' ? 'Ended' : 'Deadline passed');
         setUrgency('red');
         return;
       }
@@ -34,14 +43,38 @@ export function Countdown({ deadline, className = '' }: CountdownProps) {
       const minutes = Math.floor((remaining % 3600) / 60);
       const seconds = remaining % 60;
 
-      // Format display based on time remaining
+      // Format display based on mode
       let display = '';
-      if (days > 0) {
-        display = `${days}d ${hours}h`;
-      } else if (hours > 0) {
-        display = `${hours}h ${minutes}m`;
+      if (mode === 'friendly') {
+        // Human-readable format
+        if (days > 7) {
+          // Show absolute date for > 7 days
+          const date = new Date(deadlineNum * 1000);
+          display = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+        } else if (days > 0) {
+          display = days === 1 ? '1 day' : `${days} days`;
+        } else if (hours > 0) {
+          display = hours === 1 ? '1 hour' : `${hours} hours`;
+        } else if (minutes > 0) {
+          display = minutes === 1 ? '1 minute' : `${minutes} minutes`;
+        } else {
+          display = seconds === 1 ? '1 second' : `${seconds} seconds`;
+        }
       } else {
-        display = `${minutes}m ${seconds}s`;
+        // Precise format (original behavior)
+        if (days > 0) {
+          display = `${days}d ${hours}h`;
+        } else if (hours > 0) {
+          display = `${hours}h ${minutes}m`;
+        } else {
+          display = `${minutes}m ${seconds}s`;
+        }
       }
 
       setTimeRemaining(display);
@@ -61,7 +94,7 @@ export function Countdown({ deadline, className = '' }: CountdownProps) {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [deadline]);
+  }, [deadline, mode]);
 
   const colorClasses = {
     green: 'text-green-600',
@@ -69,9 +102,13 @@ export function Countdown({ deadline, className = '' }: CountdownProps) {
     red: 'text-red-600',
   };
 
+  const fontClass = mode === 'friendly' ? 'font-medium' : 'font-mono font-semibold';
+
   return (
-    <span className={`font-mono font-semibold ${colorClasses[urgency]} ${className}`}>
+    <span className={`${fontClass} ${colorClasses[urgency]} ${className}`}>
+      {prefix && `${prefix} `}
       {timeRemaining}
+      {suffix}
     </span>
   );
 }

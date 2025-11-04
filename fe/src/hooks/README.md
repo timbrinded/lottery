@@ -1,48 +1,160 @@
 # Custom Hooks
 
-## useBlockTime
+This directory contains custom React hooks for the Mystery Lottery application.
 
-Calculates actual block time based on observed blocks from the blockchain.
+## Infrastructure Hooks (Task 1)
 
-### Features
+### `useNetworkEnforcement`
+Enforces Arc testnet connection and provides network validation state.
 
-- **Chain-specific tracking**: Maintains separate block time data for each chain
-- **Rolling average**: Uses the last 20 blocks to calculate median block time
-- **Outlier filtering**: Removes extreme values (>60s or <0.1s) to handle anomalies
-- **Persistent storage**: Stores data in localStorage for accuracy across sessions
-- **Confidence indicator**: Provides low/medium/high confidence based on sample size
-- **Zero RPC overhead**: Uses existing wagmi `useBlockNumber` hook with watch mode
+**Returns:**
+- `isConnected`: Whether wallet is connected
+- `isCorrectNetwork`: Whether connected to Arc testnet
+- `currentChainId`: Current network chain ID
+- `requiredChainId`: Required Arc testnet chain ID
+- `needsConnection`: Whether user needs to connect wallet
+- `needsNetworkSwitch`: Whether user needs to switch networks
 
-### Usage
-
-```typescript
-import { useBlockTime } from '@/hooks/useBlockTime';
-
-function MyComponent() {
-  const { blockTime, confidence, sampleSize } = useBlockTime();
-  
-  // blockTime is in seconds (e.g., 12.3)
-  const estimatedTime = remainingBlocks * blockTime;
-  
-  return (
-    <div>
-      Estimated time: {Math.floor(estimatedTime / 60)} minutes
-      {confidence === 'low' && '*'}
-    </div>
-  );
-}
+**Usage:**
+```tsx
+const { isCorrectNetwork, needsNetworkSwitch } = useNetworkEnforcement();
 ```
 
-### Return Values
+### `useIsLotteryManager`
+Detects if the connected user owns any lotteries.
 
-- `blockTime`: Average block time in seconds (rounded to 1 decimal)
-- `confidence`: 'low' (<3 blocks), 'medium' (3-9 blocks), 'high' (10+ blocks)
-- `sampleSize`: Number of blocks observed for this chain
+**Returns:**
+- `isManager`: Whether user is a lottery creator
+- `isLoading`: Loading state
+- `error`: Error if any
 
-### Implementation Details
+**Usage:**
+```tsx
+const { isManager, isLoading } = useIsLotteryManager();
+```
 
-- Uses **median** instead of mean to handle outliers
-- Stores block numbers as strings to avoid BigInt serialization issues
-- Automatically clears data when switching chains
-- Falls back to 12 seconds when no data is available
-- Keeps only the last 20 blocks to adapt to network changes
+**Note:** Currently checks first 3 lotteries for performance. In production, use events or subgraph for efficient lookup.
+
+### `useFriendlyTime`
+Converts timestamps to human-readable format with real-time updates.
+
+**Parameters:**
+- `timestamp`: Unix timestamp in seconds (number or bigint)
+- `options`: Formatting options
+  - `prefix`: Text before time (e.g., "Ends in")
+  - `suffix`: Text after time (e.g., "!")
+  - `showSeconds`: Whether to show seconds for < 1 minute
+
+**Returns:**
+- `friendlyText`: Human-readable time string
+- `isPast`: Whether timestamp is in the past
+- `timeRemaining`: Seconds remaining
+
+**Usage:**
+```tsx
+const { friendlyText, isPast } = useFriendlyTime(deadline, {
+  prefix: 'Ends in',
+  suffix: '!',
+});
+```
+
+**Time Formats:**
+- < 1 minute: "X seconds"
+- < 1 hour: "X minutes"
+- < 24 hours: "X hours Y minutes"
+- < 7 days: "X days Y hours"
+- > 7 days: Absolute date (e.g., "Jan 15, 2025 at 3:00 PM")
+- Past: "Ended"
+
+**Helper Functions:**
+- `formatAbsoluteTime(timestamp)`: Format as absolute date/time
+- `getRelativeTime(timestamp)`: Get relative description (e.g., "in 2 hours", "5 minutes ago")
+
+### `useUserParticipations`
+Fetches lotteries where the user has committed tickets.
+
+**Returns:**
+- `participations`: Array of lottery participations
+- `isLoading`: Loading state
+- `error`: Error if any
+- `hasParticipations`: Whether user has any participations
+- `unclaimedWinnings`: Participations with unclaimed prizes
+
+**Usage:**
+```tsx
+const { participations, unclaimedWinnings } = useUserParticipations();
+```
+
+**Note:** Currently checks first 10 lotteries for performance. In production, use events or subgraph for efficient lookup.
+
+### `useHasCommittedTicket`
+Checks if user has committed a specific ticket.
+
+**Parameters:**
+- `lotteryId`: Lottery ID
+- `ticketIndex`: Ticket index
+
+**Returns:**
+- `hasCommitted`: Whether user committed this ticket
+- `isLoading`: Loading state
+- `ticketData`: Raw ticket data from contract
+
+**Usage:**
+```tsx
+const { hasCommitted } = useHasCommittedTicket(lotteryId, ticketIndex);
+```
+
+## Contract Interaction Hooks
+
+### `useCreateLottery`
+Creates a new lottery with prize distribution.
+
+### `useCommitTicket`
+Commits a ticket to a lottery.
+
+### `useRevealLottery`
+Reveals a lottery after commit deadline.
+
+### `useRefundLottery`
+Refunds a lottery if minimum participants not met.
+
+### `useClaimPrize`
+Claims a prize for a winning ticket.
+
+### `useLotterySecrets`
+Manages local storage of lottery secrets.
+
+### `useBlockTime`
+Provides block time utilities for Arc blockchain.
+
+## Development
+
+### Testing Hooks
+Use the `HookVerification` component to test infrastructure hooks in development:
+
+```tsx
+import { HookVerification } from '@/components/shared/HookVerification';
+
+// Add to any route temporarily
+<HookVerification />
+```
+
+### Performance Considerations
+
+**Current Limitations:**
+- `useIsLotteryManager`: Only checks first 3 lotteries
+- `useUserParticipations`: Only checks first 10 lotteries
+
+**Production Recommendations:**
+1. Use contract events (TicketCommitted, LotteryCreated) for efficient lookups
+2. Implement a subgraph for indexed queries
+3. Add pagination for large datasets
+4. Cache results with TanStack Query
+
+### Future Improvements
+
+1. **Event-based lookups**: Use wagmi's `useContractEvent` to listen for user-specific events
+2. **Subgraph integration**: Index all lotteries and participations for efficient queries
+3. **Batch reads**: Use multicall to batch contract reads
+4. **Optimistic updates**: Update UI before transaction confirmation
+5. **Error recovery**: Add retry logic for failed reads

@@ -13,6 +13,8 @@ import { Route as TicketRouteImport } from './routes/ticket'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ManagerIndexRouteImport } from './routes/manager/index'
+import { Route as ManagerCreateRouteImport } from './routes/manager/create'
 import { Route as LotteryIdRouteImport } from './routes/lottery.$id'
 
 const TicketRoute = TicketRouteImport.update({
@@ -35,6 +37,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ManagerIndexRoute = ManagerIndexRouteImport.update({
+  id: '/manager/',
+  path: '/manager/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagerCreateRoute = ManagerCreateRouteImport.update({
+  id: '/manager/create',
+  path: '/manager/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LotteryIdRoute = LotteryIdRouteImport.update({
   id: '/lottery/$id',
   path: '/lottery/$id',
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/ticket': typeof TicketRoute
   '/lottery/$id': typeof LotteryIdRoute
+  '/manager/create': typeof ManagerCreateRoute
+  '/manager': typeof ManagerIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/ticket': typeof TicketRoute
   '/lottery/$id': typeof LotteryIdRoute
+  '/manager/create': typeof ManagerCreateRoute
+  '/manager': typeof ManagerIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +78,37 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/ticket': typeof TicketRoute
   '/lottery/$id': typeof LotteryIdRoute
+  '/manager/create': typeof ManagerCreateRoute
+  '/manager/': typeof ManagerIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/create' | '/dashboard' | '/ticket' | '/lottery/$id'
+  fullPaths:
+    | '/'
+    | '/create'
+    | '/dashboard'
+    | '/ticket'
+    | '/lottery/$id'
+    | '/manager/create'
+    | '/manager'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/create' | '/dashboard' | '/ticket' | '/lottery/$id'
-  id: '__root__' | '/' | '/create' | '/dashboard' | '/ticket' | '/lottery/$id'
+  to:
+    | '/'
+    | '/create'
+    | '/dashboard'
+    | '/ticket'
+    | '/lottery/$id'
+    | '/manager/create'
+    | '/manager'
+  id:
+    | '__root__'
+    | '/'
+    | '/create'
+    | '/dashboard'
+    | '/ticket'
+    | '/lottery/$id'
+    | '/manager/create'
+    | '/manager/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +117,8 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   TicketRoute: typeof TicketRoute
   LotteryIdRoute: typeof LotteryIdRoute
+  ManagerCreateRoute: typeof ManagerCreateRoute
+  ManagerIndexRoute: typeof ManagerIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +151,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/manager/': {
+      id: '/manager/'
+      path: '/manager'
+      fullPath: '/manager'
+      preLoaderRoute: typeof ManagerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manager/create': {
+      id: '/manager/create'
+      path: '/manager/create'
+      fullPath: '/manager/create'
+      preLoaderRoute: typeof ManagerCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lottery/$id': {
       id: '/lottery/$id'
       path: '/lottery/$id'
@@ -125,6 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   TicketRoute: TicketRoute,
   LotteryIdRoute: LotteryIdRoute,
+  ManagerCreateRoute: ManagerCreateRoute,
+  ManagerIndexRoute: ManagerIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
