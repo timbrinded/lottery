@@ -50,7 +50,7 @@
   - Update "Redeem Ticket" button to link to `/participant/ticket` route
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 7. Create participant lottery detail route
+- [x] 7. Create participant lottery detail route
   - Create `/participant/lottery/$id` route for user-friendly lottery view
   - Display lottery status with human-readable phase description and friendly countdown
   - Show participation card with commitment status, win status, and prize amount

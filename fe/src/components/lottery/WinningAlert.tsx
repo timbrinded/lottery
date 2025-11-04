@@ -1,4 +1,5 @@
 import { formatEther } from "viem";
+import { Link } from "@tanstack/react-router";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Trophy, ExternalLink } from "lucide-react";
@@ -27,10 +28,12 @@ export function WinningAlert({ lotteryId, prizeAmount, className = "" }: Winning
               {formatEther(prizeAmount)} USDC
             </span>
           </div>
-          <Button variant="default" size="sm" className="w-full bg-yellow-600 hover:bg-yellow-700" disabled>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Claim Your Prize (Coming Soon)
-          </Button>
+          <Link to="/participant/lottery/$id" params={{ id: lotteryId.toString() }}>
+            <Button variant="default" size="sm" className="w-full bg-yellow-600 hover:bg-yellow-700">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Claim Your Prize
+            </Button>
+          </Link>
         </div>
       </AlertDescription>
     </Alert>

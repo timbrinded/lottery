@@ -1,4 +1,5 @@
 import { formatEther } from "viem";
+import { Link } from "@tanstack/react-router";
 import {
   Card,
   CardContent,
@@ -154,10 +155,12 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
         )}
 
         {/* View Details Button */}
-        <Button variant="default" size="sm" className="w-full" disabled>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          View Details (Coming Soon)
-        </Button>
+        <Link to="/participant/lottery/$id" params={{ id: lottery.id.toString() }}>
+          <Button variant="default" size="sm" className="w-full">
+            <ExternalLink className="mr-2 h-4 w-4" />
+            View Details
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   );

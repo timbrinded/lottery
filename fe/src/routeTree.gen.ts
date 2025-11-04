@@ -18,6 +18,7 @@ import { Route as ManagerIndexRouteImport } from './routes/manager/index'
 import { Route as ParticipantTicketRouteImport } from './routes/participant/ticket'
 import { Route as ManagerCreateRouteImport } from './routes/manager/create'
 import { Route as LotteryIdRouteImport } from './routes/lottery.$id'
+import { Route as ParticipantLotteryIdRouteImport } from './routes/participant/lottery/$id'
 import { Route as ManagerLotteryIdRouteImport } from './routes/manager/lottery/$id'
 
 const TicketRoute = TicketRouteImport.update({
@@ -65,6 +66,11 @@ const LotteryIdRoute = LotteryIdRouteImport.update({
   path: '/lottery/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParticipantLotteryIdRoute = ParticipantLotteryIdRouteImport.update({
+  id: '/participant/lottery/$id',
+  path: '/participant/lottery/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ManagerLotteryIdRoute = ManagerLotteryIdRouteImport.update({
   id: '/manager/lottery/$id',
   path: '/manager/lottery/$id',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/manager': typeof ManagerIndexRoute
   '/participant': typeof ParticipantIndexRoute
   '/manager/lottery/$id': typeof ManagerLotteryIdRoute
+  '/participant/lottery/$id': typeof ParticipantLotteryIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/manager': typeof ManagerIndexRoute
   '/participant': typeof ParticipantIndexRoute
   '/manager/lottery/$id': typeof ManagerLotteryIdRoute
+  '/participant/lottery/$id': typeof ParticipantLotteryIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/manager/': typeof ManagerIndexRoute
   '/participant/': typeof ParticipantIndexRoute
   '/manager/lottery/$id': typeof ManagerLotteryIdRoute
+  '/participant/lottery/$id': typeof ParticipantLotteryIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/manager'
     | '/participant'
     | '/manager/lottery/$id'
+    | '/participant/lottery/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/manager'
     | '/participant'
     | '/manager/lottery/$id'
+    | '/participant/lottery/$id'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/manager/'
     | '/participant/'
     | '/manager/lottery/$id'
+    | '/participant/lottery/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +170,7 @@ export interface RootRouteChildren {
   ManagerIndexRoute: typeof ManagerIndexRoute
   ParticipantIndexRoute: typeof ParticipantIndexRoute
   ManagerLotteryIdRoute: typeof ManagerLotteryIdRoute
+  ParticipantLotteryIdRoute: typeof ParticipantLotteryIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LotteryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/participant/lottery/$id': {
+      id: '/participant/lottery/$id'
+      path: '/participant/lottery/$id'
+      fullPath: '/participant/lottery/$id'
+      preLoaderRoute: typeof ParticipantLotteryIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/manager/lottery/$id': {
       id: '/manager/lottery/$id'
       path: '/manager/lottery/$id'
@@ -246,6 +266,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManagerIndexRoute: ManagerIndexRoute,
   ParticipantIndexRoute: ParticipantIndexRoute,
   ManagerLotteryIdRoute: ManagerLotteryIdRoute,
+  ParticipantLotteryIdRoute: ParticipantLotteryIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
