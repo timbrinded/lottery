@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { formatEther } from "viem";
 import {
   Card,
@@ -23,7 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Loader2, Key, AlertTriangle } from "lucide-react";
+import { Loader2, Key, AlertTriangle, ExternalLink } from "lucide-react";
 
 type LotteryState = "Pending" | "CommitOpen" | "RevealOpen" | "Finalized";
 
@@ -262,6 +263,14 @@ export function ManagerLotteryCard({ lottery }: ManagerLotteryCardProps) {
 
         {/* Action buttons */}
         <div className="space-y-2">
+          {/* View Details Button */}
+          <Link to="/manager/lottery/$id" params={{ id: lottery.id.toString() }}>
+            <Button variant="default" size="sm" className="w-full">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View Details
+            </Button>
+          </Link>
+
           {/* View Tickets Button */}
           {hasSecret(lottery.id) && (
             <Button

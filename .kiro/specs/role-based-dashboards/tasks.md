@@ -32,7 +32,7 @@
   - Display empty state when no lotteries exist
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 5. Create manager lottery detail route
+- [x] 5. Create manager lottery detail route
   - Create `/manager/lottery/$id` route for detailed lottery view
   - Display lottery overview with status, prize pool, participant count, and friendly countdown
   - Implement action panel with reveal, refund, view tickets, and restore secret buttons
