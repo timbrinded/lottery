@@ -74,7 +74,7 @@
   - Test QR code scanning flow end-to-end
   - _Requirements: 8.5, 8.6_
 
-- [ ] 10. Polish and testing
+- [x] 10. Polish and testing
   - Add loading states to all new components
   - Add error handling for all new hooks
   - Test network enforcement flow on splash page
