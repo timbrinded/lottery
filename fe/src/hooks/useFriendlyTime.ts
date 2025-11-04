@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useInterval } from 'usehooks-ts';
 
 interface FriendlyTimeOptions {
   prefix?: string;
@@ -28,14 +29,10 @@ export function useFriendlyTime(
 
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
-  // Update current time every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Math.floor(Date.now() / 1000));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // Update current time every second using useInterval from usehooks-ts
+  useInterval(() => {
+    setNow(Math.floor(Date.now() / 1000));
+  }, 1000);
 
   const targetTime = typeof timestamp === 'bigint' ? Number(timestamp) : timestamp;
   const timeRemaining = targetTime - now;

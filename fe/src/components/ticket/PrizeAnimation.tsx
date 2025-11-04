@@ -12,6 +12,11 @@ export function PrizeAnimation({ prizeAmount, onAnimationComplete }: PrizeAnimat
   const [showResult, setShowResult] = useState(false);
 
   useEffect(() => {
+    // Only start animation if prizeAmount is defined
+    if (prizeAmount === undefined) {
+      return;
+    }
+
     // Show "Checking..." animation for 3 seconds
     const checkingTimer = setTimeout(() => {
       setIsChecking(false);

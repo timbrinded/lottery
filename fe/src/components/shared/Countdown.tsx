@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useInterval, useIsomorphicLayoutEffect } from 'usehooks-ts';
 
 interface CountdownProps {
   deadline: number; // Unix timestamp in seconds
@@ -18,8 +19,7 @@ export function Countdown({
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [urgency, setUrgency] = useState<'green' | 'yellow' | 'red'>('green');
 
-  useEffect(() => {
-    const updateCountdown = () => {
+  const updateCountdown = useCallback(() => {
       // Ensure deadline is a valid number
       const deadlineNum = typeof deadline === 'number' ? deadline : Number(deadline);
       if (!isFinite(deadlineNum) || isNaN(deadlineNum)) {
@@ -88,13 +88,15 @@ export function Countdown({
       } else {
         setUrgency('red');
       }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(interval);
   }, [deadline, mode]);
+
+  // Update countdown immediately on mount/deadline change
+  useIsomorphicLayoutEffect(() => {
+    updateCountdown();
+  }, [updateCountdown]);
+
+  // Update countdown every second using useInterval from usehooks-ts
+  useInterval(updateCountdown, 1000);
 
   const colorClasses = {
     green: 'text-green-600',

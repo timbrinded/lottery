@@ -23,10 +23,11 @@ import { useClaimPrize } from "@/hooks/useClaimPrize";
 import { parseTicketInput, encodeTicketCode } from "@/lib/crypto";
 import { formatErrorForDisplay } from "@/lib/errors";
 import { AlertCircle, Ticket, CheckCircle, Camera } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import { formatEther } from "viem";
 import { QRScanner } from "@/components/shared/QRScanner";
+import { useParticipantTickets } from "@/hooks/useParticipantTickets";
 
 // Define search params type - use opaque code instead of exposing components
 type TicketSearchParams = {
@@ -49,23 +50,37 @@ function TicketPage() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
+  // Participant tickets hook for storing secrets
+  const { saveTicket, getTicketSecret } = useParticipantTickets();
+
   // Decode the ticket code if present
   const decodedTicket = code ? parseTicketInput(code) : null;
 
   // Extract values (or use defaults for when no code is present)
   const lotteryId = decodedTicket ? BigInt(decodedTicket.lottery) : 0n;
   const ticketIndex = decodedTicket ? parseInt(decodedTicket.ticket) : 0;
-  const secret = decodedTicket?.secret || "";
+  
+  // Try to get secret from localStorage first, fall back to decoded ticket
+  const storedSecret = getTicketSecret(lotteryId, ticketIndex);
+  const secret = storedSecret || decodedTicket?.secret || "";
+
+  // Save ticket secret to localStorage when first decoded
+  useEffect(() => {
+    if (decodedTicket && decodedTicket.secret && lotteryId > 0n) {
+      saveTicket(lotteryId, ticketIndex, decodedTicket.secret);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decodedTicket?.secret, lotteryId, ticketIndex]);
 
   // ALL HOOKS MUST BE CALLED UNCONDITIONALLY AT THE TOP
-  // Fetch lottery data (disabled when no code)
+  // Fetch lottery data (enabled when we have a valid lottery ID and secret)
   const {
     data: lotteryData,
     isLoading,
     isError,
   } = useReadLotteryFactory("getLotteryStatus", [lotteryId], {
     query: {
-      enabled: !!decodedTicket,
+      enabled: lotteryId > 0n && !!secret,
       refetchInterval: 10000, // Refetch every 10 seconds to keep data fresh
     },
   });
@@ -113,7 +128,9 @@ function TicketPage() {
     refetch: refetchTicket,
   } = useReadLotteryFactory("tickets", [lotteryId, BigInt(ticketIndex)], {
     query: {
-      enabled: (isRevealed && isPrizeChecked && !!decodedTicket) || (isCommitPhase && !!decodedTicket),
+      enabled: 
+        (isRevealed && isPrizeChecked && lotteryId > 0n && !!secret) || 
+        (isCommitPhase && lotteryId > 0n && !!secret),
     },
   });
 
@@ -125,7 +142,9 @@ function TicketPage() {
     ? (ticketData as readonly [string, boolean, boolean, bigint])[2]
     : undefined;
   const prizeAmount = ticketData
-    ? (ticketData as readonly [string, boolean, boolean, bigint])[3]
+    ? (typeof (ticketData as any)[3] === 'bigint' 
+        ? (ticketData as readonly [string, boolean, boolean, bigint])[3]
+        : BigInt((ticketData as any)[3]))
     : undefined;
 
   // Claim prize hook (always called, but won't be used when no code)

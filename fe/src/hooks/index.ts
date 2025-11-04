@@ -11,4 +11,5 @@ export { useRevealLottery } from './useRevealLottery';
 export { useRefundLottery } from './useRefundLottery';
 export { useClaimPrize } from './useClaimPrize';
 export { useLotterySecrets } from './useLotterySecrets';
+export { useParticipantTickets } from './useParticipantTickets';
 export { useBlockTime } from './useBlockTime';
