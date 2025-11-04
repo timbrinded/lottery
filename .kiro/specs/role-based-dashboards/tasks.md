@@ -40,7 +40,7 @@
   - Create `StatisticsPanel` component showing lottery performance metrics
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 6. Create participant dashboard routes
+- [x] 6. Create participant dashboard routes
   - Create `/participant/index.tsx` route for participant lottery list
   - Move `/ticket.tsx` to `/participant/ticket.tsx` (no changes to functionality)
   - Implement `useUserParticipations` hook to fetch user's lottery participations

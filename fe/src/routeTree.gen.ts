@@ -13,7 +13,9 @@ import { Route as TicketRouteImport } from './routes/ticket'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ParticipantIndexRouteImport } from './routes/participant/index'
 import { Route as ManagerIndexRouteImport } from './routes/manager/index'
+import { Route as ParticipantTicketRouteImport } from './routes/participant/ticket'
 import { Route as ManagerCreateRouteImport } from './routes/manager/create'
 import { Route as LotteryIdRouteImport } from './routes/lottery.$id'
 import { Route as ManagerLotteryIdRouteImport } from './routes/manager/lottery/$id'
@@ -38,9 +40,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParticipantIndexRoute = ParticipantIndexRouteImport.update({
+  id: '/participant/',
+  path: '/participant/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ManagerIndexRoute = ManagerIndexRouteImport.update({
   id: '/manager/',
   path: '/manager/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParticipantTicketRoute = ParticipantTicketRouteImport.update({
+  id: '/participant/ticket',
+  path: '/participant/ticket',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ManagerCreateRoute = ManagerCreateRouteImport.update({
@@ -66,7 +78,9 @@ export interface FileRoutesByFullPath {
   '/ticket': typeof TicketRoute
   '/lottery/$id': typeof LotteryIdRoute
   '/manager/create': typeof ManagerCreateRoute
+  '/participant/ticket': typeof ParticipantTicketRoute
   '/manager': typeof ManagerIndexRoute
+  '/participant': typeof ParticipantIndexRoute
   '/manager/lottery/$id': typeof ManagerLotteryIdRoute
 }
 export interface FileRoutesByTo {
@@ -76,7 +90,9 @@ export interface FileRoutesByTo {
   '/ticket': typeof TicketRoute
   '/lottery/$id': typeof LotteryIdRoute
   '/manager/create': typeof ManagerCreateRoute
+  '/participant/ticket': typeof ParticipantTicketRoute
   '/manager': typeof ManagerIndexRoute
+  '/participant': typeof ParticipantIndexRoute
   '/manager/lottery/$id': typeof ManagerLotteryIdRoute
 }
 export interface FileRoutesById {
@@ -87,7 +103,9 @@ export interface FileRoutesById {
   '/ticket': typeof TicketRoute
   '/lottery/$id': typeof LotteryIdRoute
   '/manager/create': typeof ManagerCreateRoute
+  '/participant/ticket': typeof ParticipantTicketRoute
   '/manager/': typeof ManagerIndexRoute
+  '/participant/': typeof ParticipantIndexRoute
   '/manager/lottery/$id': typeof ManagerLotteryIdRoute
 }
 export interface FileRouteTypes {
@@ -99,7 +117,9 @@ export interface FileRouteTypes {
     | '/ticket'
     | '/lottery/$id'
     | '/manager/create'
+    | '/participant/ticket'
     | '/manager'
+    | '/participant'
     | '/manager/lottery/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -109,7 +129,9 @@ export interface FileRouteTypes {
     | '/ticket'
     | '/lottery/$id'
     | '/manager/create'
+    | '/participant/ticket'
     | '/manager'
+    | '/participant'
     | '/manager/lottery/$id'
   id:
     | '__root__'
@@ -119,7 +141,9 @@ export interface FileRouteTypes {
     | '/ticket'
     | '/lottery/$id'
     | '/manager/create'
+    | '/participant/ticket'
     | '/manager/'
+    | '/participant/'
     | '/manager/lottery/$id'
   fileRoutesById: FileRoutesById
 }
@@ -130,7 +154,9 @@ export interface RootRouteChildren {
   TicketRoute: typeof TicketRoute
   LotteryIdRoute: typeof LotteryIdRoute
   ManagerCreateRoute: typeof ManagerCreateRoute
+  ParticipantTicketRoute: typeof ParticipantTicketRoute
   ManagerIndexRoute: typeof ManagerIndexRoute
+  ParticipantIndexRoute: typeof ParticipantIndexRoute
   ManagerLotteryIdRoute: typeof ManagerLotteryIdRoute
 }
 
@@ -164,11 +190,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/participant/': {
+      id: '/participant/'
+      path: '/participant'
+      fullPath: '/participant'
+      preLoaderRoute: typeof ParticipantIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/manager/': {
       id: '/manager/'
       path: '/manager'
       fullPath: '/manager'
       preLoaderRoute: typeof ManagerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/participant/ticket': {
+      id: '/participant/ticket'
+      path: '/participant/ticket'
+      fullPath: '/participant/ticket'
+      preLoaderRoute: typeof ParticipantTicketRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/manager/create': {
@@ -202,7 +242,9 @@ const rootRouteChildren: RootRouteChildren = {
   TicketRoute: TicketRoute,
   LotteryIdRoute: LotteryIdRoute,
   ManagerCreateRoute: ManagerCreateRoute,
+  ParticipantTicketRoute: ParticipantTicketRoute,
   ManagerIndexRoute: ManagerIndexRoute,
+  ParticipantIndexRoute: ParticipantIndexRoute,
   ManagerLotteryIdRoute: ManagerLotteryIdRoute,
 }
 export const routeTree = rootRouteImport
