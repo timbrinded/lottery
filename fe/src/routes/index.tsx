@@ -5,7 +5,7 @@ import { useIsLotteryManager } from '@/hooks/useIsLotteryManager'
 import { useLatestLottery } from '@/hooks/useLatestLottery'
 import type { LatestLotteryData } from '@/hooks/useLatestLottery'
 import { useFriendlyTime, getRelativeTime } from '@/hooks/useFriendlyTime'
-import { HeroSplash } from '@/theme/coastal-mint/components/HeroSplash'
+
 import { DashboardGrid } from '@/theme/coastal-mint/components/DashboardGrid'
 import { StatCard } from '@/theme/coastal-mint/components/StatCard'
 import { RaffleTicket } from '@/theme/coastal-mint/components/RaffleTicket'
@@ -20,25 +20,25 @@ type FeatureCardProps = {
 
 const featureCards: FeatureCardProps[] = [
   {
-    emoji: '/iso/chain.png',
+    emoji: '/iso/lg/chain.png',
     title: 'Provably Fair Giveaways',
     description:
       'Every draw is sealed and publicly auditable, so partners can prove results to legal, finance, and community teams.',
   },
   {
-    emoji: '/iso/bird.png',
+    emoji: '/iso/lg/bird.png',
     title: 'Launch Campaigns Fast',
     description:
       'Prebuilt manager and participant journeys mean new promotions spin up in minutes without custom engineering.',
   },
   {
-    emoji: '/iso/coins.png',
+    emoji: '/iso/sm/coins.png',
     title: 'Sponsor-Friendly Costs',
     description:
       'Cover fees yourself or let players pay—flexible funding keeps campaigns on budget while modern infrastructure keeps costs low.',
   },
   // {
-  //   emoji: '/iso/lighthouse.png',
+  //   emoji: '/iso/bg/lighthouse.png',
   //   title: 'Clear Post-Campaign Reporting',
   //   description:
   //     'Live pool stats and exportable attestations make it simple to recap performance with investors, partners, and brand stakeholders.',
@@ -52,21 +52,21 @@ export const Route = createFileRoute('/')({
 function App() {
   const navigate = useNavigate()
   const { isCorrectNetwork } = useNetworkEnforcement()
-  const { isManager, isLoading } = useIsLotteryManager()
+
   const { lottery: latestLottery, isLoading: isLatestLoading } = useLatestLottery()
 
-  const heroPrimaryLabel = isManager ? 'Open Manager Dashboard' : 'Enter Participant View'
-  const heroPrimaryTarget = isManager ? '/manager' : '/participant'
+  // Coastal-themed CTAs
+  const ctaPrimary = {
+    label: '🎟️ Redeem Your Ticket',
+    description: 'Got a lucky ticket? Dive in and claim your prize!',
+    onClick: () => navigate({ to: '/participant' }),
+  }
 
-  const heroSecondary = isManager
-    ? {
-        label: 'View Participant Experience',
-        onClick: () => navigate({ to: '/participant' }),
-      }
-    : {
-        label: 'Create a Lottery',
-        onClick: () => navigate({ to: '/manager/create' }),
-      }
+  const ctaSecondary = {
+    label: '🌊 Start a New Lottery',
+    description: 'Create waves with your own mystery draw',
+    onClick: () => navigate({ to: '/manager/create' }),
+  }
 
   const milestone = getNextMilestone(latestLottery)
   const countdown = useFriendlyTime(milestone.target ?? 0, {
@@ -132,30 +132,92 @@ function App() {
         <div className="space-y-12">
           <NetworkEnforcementBanner />
 
-          <HeroSplash
-            eyebrow="Minted experiences for trustless draws"
-            title="Mystery Lottery"
-            description="A calm-but-premium lottery experience built on Arc. Commit-reveal transparency, live pool tracking, and participant flows that feel trustworthy."
-            primaryAction={{
-              label: heroPrimaryLabel,
-              onClick: () => navigate({ to: heroPrimaryTarget }),
-              disabled: !isCorrectNetwork || isLoading,
-            }}
-            secondaryAction={{
-              ...heroSecondary,
-              disabled: !isCorrectNetwork,
-            }}
-            illustration={
-              <div className="relative flex h-full w-full max-w-lg items-center justify-center">
-                <div className="absolute h-64 w-64 rounded-full bg-mint-soft/40 blur-3xl animate-pulse" aria-hidden="true" />
-                <img
-                  src="/hero2.png"
-                  alt="Mystery Lottery Hero"
-                  className="relative h-auto w-full max-w-md rounded-3xl drop-shadow-2xl opacity-95"
-                />
+          {/* Coastal-themed Hero CTA */}
+          <section className="relative overflow-hidden rounded-[32px] border border-border/60 bg-gradient-to-br from-mint-soft/20 via-background to-mint-soft/10 px-8 py-16 shadow-[var(--shadow-mint-soft)]">
+            {/* Hero image as faded background */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-80" aria-hidden="true">
+              <img
+                src="/hero2.png"
+                alt=""
+                className="h-full w-full object-cover object-center"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" aria-hidden="true" />
+            
+            <div className="relative mx-auto max-w-4xl text-center">
+             
+              
+              <h1 className="mb-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+                What brings you to shore?
+              </h1>
+              
+              <p className="mb-12 text-lg text-muted-foreground sm:text-xl">
+                Whether you're here to claim your treasure or cast your own nets, the tide is in your favor.
+              </p>
+
+              {/* Dual CTA Cards */}
+              <div className="grid gap-6 sm:grid-cols-2">
+                {/* Redeem Ticket CTA - Glass Effect */}
+                <button
+                  onClick={ctaPrimary.onClick}
+                  disabled={!isCorrectNetwork}
+                  className="group relative overflow-hidden rounded-[24px] border border-white/30 bg-white/10 p-8 text-left shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:border-white/40 hover:bg-white/15 hover:shadow-[0_8px_32px_0_rgba(31,38,135,0.25)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {/* Glass shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-50" aria-hidden="true" />
+                  
+                  <div className="absolute right-4 top-4 transition-transform group-hover:scale-110">
+                    <img src="/iso/sm/ticket.png" alt="" className="h-16 w-16 object-contain" />
+                  </div>
+                  <div className="relative">
+                    <div className="mb-3 text-3xl font-bold text-foreground drop-shadow-sm">
+                      Redeem Your Ticket
+                    </div>
+                    <p className="text-base text-foreground/80">
+                      Got a lucky ticket? Dive in and claim your prize from the deep blue!
+                    </p>
+                    <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-mint-dark">
+                      <span>Check your fortune</span>
+                      <span className="transition-transform group-hover:translate-x-1">→</span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Start Lottery CTA - Brushed Steel Effect */}
+                <button
+                  onClick={ctaSecondary.onClick}
+                  disabled={!isCorrectNetwork}
+                  className="group relative overflow-hidden rounded-[24px] border border-zinc-400/40 bg-gradient-to-br from-zinc-200 via-zinc-300 to-zinc-200 p-8 text-left shadow-[0_4px_16px_0_rgba(0,0,0,0.1),inset_0_1px_0_0_rgba(255,255,255,0.5)] transition-all hover:scale-[1.02] hover:shadow-[0_4px_20px_0_rgba(0,0,0,0.15),inset_0_1px_0_0_rgba(255,255,255,0.6)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {/* Brushed metal texture */}
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.3)_50%,transparent_100%)] bg-[length:200%_100%] opacity-60" aria-hidden="true" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" aria-hidden="true" />
+                  
+                  <div className="absolute right-4 top-4 transition-transform group-hover:scale-110">
+                    <img src="/iso/sm/chest.png" alt="" className="h-16 w-16 object-contain" />
+                  </div>
+                  <div className="relative">
+                    <div className="mb-3 text-3xl font-bold text-zinc-800">
+                      Start a New Lottery
+                    </div>
+                    <p className="text-base text-zinc-700">
+                      Create waves with your own mystery draw. Fair, transparent, unforgettable.
+                    </p>
+                    <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-zinc-800">
+                      <span>Launch your draw</span>
+                      <span className="transition-transform group-hover:translate-x-1">→</span>
+                    </div>
+                  </div>
+                </button>
               </div>
-            }
-          />
+
+              {!isCorrectNetwork && (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  🌐 Switch to the correct network to get started
+                </p>
+              )}
+            </div>
+          </section>
 
           {isCorrectNetwork ? (
             <DashboardGrid
@@ -166,28 +228,28 @@ function App() {
                     label="Prize pool"
                     value={prizeValue}
                     hint={prizeHint}
-                    icon={<img src="/iso/coins.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={<img src="/iso/sm/coins.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Time left"
                     value={timeValue}
                     hint={timeHint}
-                    icon={<img src="/iso/hourglass.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={<img src="/iso/sm/hourglass.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Prizes claimed"
                     value={claimValue}
                     hint={claimHint}
-                    icon={<img src="/iso/chest.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={<img src="/iso/sm/chest.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Lottery stage"
                     value={stageValue}
                     hint={stageHint}
-                    icon={<img src="/iso/chain.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={<img src="/iso/sm/chain.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                 </div>
               }

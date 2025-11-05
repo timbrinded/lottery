@@ -163,14 +163,14 @@ export function ManagerLotteryCard({ lottery }: ManagerLotteryCardProps) {
   return (
     <Card className="relative overflow-hidden">
       <div className="absolute right-2 top-2 opacity-5 pointer-events-none">
-        <img src="/iso/ticket.png" alt="" className="w-24 h-24 object-contain" />
+        <img src="/iso/lg/ticket.png" alt="" className="w-24 h-24 object-contain" />
       </div>
       <CardHeader className="relative z-10">
         <div className="flex items-start justify-between">
           <div>
             <CardTitle>Lottery #{lottery.id.toString()}</CardTitle>
             <CardDescription className="flex items-center gap-1.5 mt-1">
-              <img src="/iso/coins.png" alt="" className="w-3.5 h-3.5 object-contain opacity-60" />
+              <img src="/iso/sm/coins.png" alt="" className="w-3.5 h-3.5 object-contain opacity-60" />
               {prizePoolDisplay} USDC Prize Pool
             </CardDescription>
           </div>

@@ -27,7 +27,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="create" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <img src="/iso/chest.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+              <img src="/iso/lg/chest.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               Create Your Mystery Lottery
@@ -40,7 +40,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="share" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <img src="/iso/message_bottle.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+              <img src="/iso/lg/message_bottle.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               📤 Share Your Tickets
@@ -53,7 +53,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="commit" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <img src="/iso/hourglass.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+              <img src="/iso/lg/hourglass.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               🔒 Participants Commit
@@ -66,7 +66,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="reveal" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <img src="/iso/bird.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+              <img src="/iso/lg/bird.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               🎉 Reveal & Claim Prizes
@@ -79,7 +79,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="fair" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <img src="/iso/chain.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+              <img src="/iso/lg/chain.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               ✅ Provably Fair

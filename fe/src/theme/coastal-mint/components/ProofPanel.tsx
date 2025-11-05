@@ -28,10 +28,10 @@ export function ProofPanel({
       )}
     >
       <div className="absolute right-4 top-4 opacity-5 pointer-events-none">
-        <img src="/iso/chain.png" alt="" className="w-20 h-20 object-contain" />
+        <img src="/iso/lg/chain.png" alt="" className="w-20 h-20 object-contain" />
       </div>
       <div className="flex items-center gap-2">
-        <img src="/iso/chain.png" alt="" className="w-4 h-4 object-contain opacity-70" />
+        <img src="/iso/sm/chain.png" alt="" className="w-4 h-4 object-contain opacity-70" />
         <span className="text-xs font-semibold uppercase tracking-[0.35em] text-primary">{kicker}</span>
       </div>
       <h3 className="mt-3 text-2xl font-semibold text-foreground relative z-10">{title}</h3>

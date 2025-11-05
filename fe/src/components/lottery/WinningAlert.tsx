@@ -14,7 +14,7 @@ export function WinningAlert({ lotteryId, prizeAmount, className = "" }: Winning
   return (
     <Alert className={`bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300 relative overflow-hidden ${className}`}>
       <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
-        <img src="/iso/chest.png" alt="" className="w-20 h-20 object-contain" />
+        <img src="/iso/lg/chest.png" alt="" className="w-20 h-20 object-contain" />
       </div>
       <Trophy className="h-5 w-5 text-yellow-600 relative z-10" />
       <AlertTitle className="text-yellow-900 font-bold relative z-10">

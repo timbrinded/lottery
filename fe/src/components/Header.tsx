@@ -18,7 +18,7 @@ export default function Header() {
               to="/"
               className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-semibold uppercase tracking-[0.35em] text-primary transition hover:bg-primary/20"
             >
-              <img src="/iso/ticket.png" alt="" className="w-5 h-5 object-contain" />
+              <img src="/iso/sm/ticket.png" alt="" className="w-5 h-5 object-contain" />
               <span className="hidden md:inline tracking-normal">Mystery Lottery</span>
             </Link>
           </h1>

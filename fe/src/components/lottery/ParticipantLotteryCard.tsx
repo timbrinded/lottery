@@ -97,7 +97,7 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
   return (
     <Card className="relative overflow-hidden">
       <div className="absolute right-2 top-2 opacity-5 pointer-events-none">
-        <img src={hasWon ? "/iso/chest.png" : "/iso/ticket.png"} alt="" className="w-24 h-24 object-contain" />
+        <img src={hasWon ? "/iso/lg/chest.png" : "/iso/lg/ticket.png"} alt="" className="w-24 h-24 object-contain" />
       </div>
       <CardHeader className="relative z-10">
         <div className="flex items-start justify-between">
@@ -109,7 +109,7 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
               )}
             </CardTitle>
             <CardDescription className="flex items-center gap-1.5 mt-1">
-              <img src="/iso/coins.png" alt="" className="w-3.5 h-3.5 object-contain opacity-60" />
+              <img src="/iso/sm/coins.png" alt="" className="w-3.5 h-3.5 object-contain opacity-60" />
               {formatEther(lottery.totalPrizePool)} USDC Prize Pool
             </CardDescription>
           </div>
@@ -121,7 +121,7 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
         {hasWon && !isClaimed && isRevealed && (
           <Alert className="bg-yellow-50 border-yellow-200 relative overflow-hidden">
             <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
-              <img src="/iso/chest.png" alt="" className="w-12 h-12 object-contain" />
+              <img src="/iso/sm/chest.png" alt="" className="w-12 h-12 object-contain" />
             </div>
             <Trophy className="h-4 w-4 text-yellow-600 relative z-10" />
             <AlertDescription className="text-yellow-900 relative z-10">
@@ -137,7 +137,7 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
         {hasWon && isClaimed && (
           <Alert className="bg-green-50 border-green-200 relative overflow-hidden">
             <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
-              <img src="/iso/bird.png" alt="" className="w-12 h-12 object-contain" />
+              <img src="/iso/sm/bird.png" alt="" className="w-12 h-12 object-contain" />
             </div>
             <CheckCircle className="h-4 w-4 text-green-600 relative z-10" />
             <AlertDescription className="text-green-900 relative z-10">
@@ -153,7 +153,7 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
         {nextDeadline && (
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              <img src="/iso/hourglass.png" alt="" className="w-4 h-4 object-contain opacity-70" />
+              <img src="/iso/sm/hourglass.png" alt="" className="w-4 h-4 object-contain opacity-70" />
               <span className="text-sm font-medium">{nextDeadline.label}:</span>
             </div>
             <Countdown

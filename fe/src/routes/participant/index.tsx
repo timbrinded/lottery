@@ -48,7 +48,7 @@ function ParticipantDashboard() {
   if (!isConnected) {
     content = (
       <EmptyState
-        illustration="/iso/message_bottle.png"
+        illustration="/iso/lg/message_bottle.png"
         title="Connect Your Wallet"
         description="Connect your wallet to view your lottery participations and claim prizes."
       />
@@ -167,7 +167,7 @@ function ParticipantDashboard() {
           </div>
         ) : (
           <EmptyState
-            illustration="/iso/ticket.png"
+            illustration="/iso/lg/ticket.png"
             title="No Active Lotteries"
             description="You haven't participated in any lotteries yet. Redeem a ticket to get started!"
             action={
