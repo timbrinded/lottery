@@ -95,8 +95,11 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
   const isClaimed = lottery.isClaimed === true;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="relative overflow-hidden">
+      <div className="absolute right-2 top-2 opacity-5 pointer-events-none">
+        <img src={hasWon ? "/iso/chest.png" : "/iso/ticket.png"} alt="" className="w-24 h-24 object-contain" />
+      </div>
+      <CardHeader className="relative z-10">
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -105,7 +108,8 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
                 <Trophy className="h-5 w-5 text-yellow-500" />
               )}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="flex items-center gap-1.5 mt-1">
+              <img src="/iso/coins.png" alt="" className="w-3.5 h-3.5 object-contain opacity-60" />
               {formatEther(lottery.totalPrizePool)} USDC Prize Pool
             </CardDescription>
           </div>
@@ -115,9 +119,12 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
       <CardContent className="space-y-4">
         {/* Winning Alert */}
         {hasWon && !isClaimed && isRevealed && (
-          <Alert className="bg-yellow-50 border-yellow-200">
-            <Trophy className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-900">
+          <Alert className="bg-yellow-50 border-yellow-200 relative overflow-hidden">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
+              <img src="/iso/chest.png" alt="" className="w-12 h-12 object-contain" />
+            </div>
+            <Trophy className="h-4 w-4 text-yellow-600 relative z-10" />
+            <AlertDescription className="text-yellow-900 relative z-10">
               <strong>You won!</strong> Prize:{" "}
               <span className="font-mono font-semibold">
                 {lottery.prizeAmount ? formatEther(lottery.prizeAmount) : "0"} USDC
@@ -128,9 +135,12 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
 
         {/* Claimed Status */}
         {hasWon && isClaimed && (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-900">
+          <Alert className="bg-green-50 border-green-200 relative overflow-hidden">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
+              <img src="/iso/bird.png" alt="" className="w-12 h-12 object-contain" />
+            </div>
+            <CheckCircle className="h-4 w-4 text-green-600 relative z-10" />
+            <AlertDescription className="text-green-900 relative z-10">
               <strong>Prize claimed!</strong> You received{" "}
               <span className="font-mono font-semibold">
                 {lottery.prizeAmount ? formatEther(lottery.prizeAmount) : "0"} USDC
@@ -143,7 +153,7 @@ export function ParticipantLotteryCard({ lottery }: ParticipantLotteryCardProps)
         {nextDeadline && (
           <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <img src="/iso/hourglass.png" alt="" className="w-4 h-4 object-contain opacity-70" />
               <span className="text-sm font-medium">{nextDeadline.label}:</span>
             </div>
             <Countdown

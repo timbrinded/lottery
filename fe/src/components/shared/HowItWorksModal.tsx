@@ -1,6 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gift, Share2, Lock, PartyPopper, ShieldCheck } from "lucide-react";
 
 interface HowItWorksModalProps {
   open: boolean;
@@ -28,7 +27,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="create" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <Gift className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
+              <img src="/iso/chest.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               Create Your Mystery Lottery
@@ -41,7 +40,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="share" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <Share2 className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
+              <img src="/iso/message_bottle.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               📤 Share Your Tickets
@@ -54,7 +53,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="commit" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <Lock className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
+              <img src="/iso/hourglass.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               🔒 Participants Commit
@@ -67,7 +66,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="reveal" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <PartyPopper className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
+              <img src="/iso/bird.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               🎉 Reveal & Claim Prizes
@@ -80,7 +79,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="fair" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <ShieldCheck className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
+              <img src="/iso/chain.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               ✅ Provably Fair

@@ -12,12 +12,15 @@ interface WinningAlertProps {
 
 export function WinningAlert({ lotteryId, prizeAmount, className = "" }: WinningAlertProps) {
   return (
-    <Alert className={`bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300 ${className}`}>
-      <Trophy className="h-5 w-5 text-yellow-600" />
-      <AlertTitle className="text-yellow-900 font-bold">
+    <Alert className={`bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300 relative overflow-hidden ${className}`}>
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
+        <img src="/iso/chest.png" alt="" className="w-20 h-20 object-contain" />
+      </div>
+      <Trophy className="h-5 w-5 text-yellow-600 relative z-10" />
+      <AlertTitle className="text-yellow-900 font-bold relative z-10">
         🎉 Congratulations! You Won!
       </AlertTitle>
-      <AlertDescription className="text-yellow-900">
+      <AlertDescription className="text-yellow-900 relative z-10">
         <div className="mt-2 space-y-3">
           <p>
             You have an unclaimed prize in Lottery #{lotteryId.toString()}

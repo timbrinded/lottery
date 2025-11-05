@@ -267,7 +267,7 @@ function ManagerDashboard() {
           ) : filteredLotteries.length === 0 ? (
             lotteries.length === 0 ? (
               <EmptyState
-                icon={Sparkles}
+                illustration="/iso/skeleton.png"
                 title="No lotteries yet"
                 description="Create your first lottery to start distributing mystery prizes to participants."
                 action={

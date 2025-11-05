@@ -10,7 +10,6 @@ import { DashboardGrid } from '@/theme/coastal-mint/components/DashboardGrid'
 import { StatCard } from '@/theme/coastal-mint/components/StatCard'
 import { RaffleTicket } from '@/theme/coastal-mint/components/RaffleTicket'
 import { ProofPanel } from '@/theme/coastal-mint/components/ProofPanel'
-import { ShieldCheck, Timer, Sparkles, Trophy } from 'lucide-react'
 import { formatEther } from 'viem'
 
 type FeatureCardProps = {
@@ -21,29 +20,29 @@ type FeatureCardProps = {
 
 const featureCards: FeatureCardProps[] = [
   {
-    emoji: '🤝',
+    emoji: '/iso/chain.png',
     title: 'Provably Fair Giveaways',
     description:
       'Every draw is sealed and publicly auditable, so partners can prove results to legal, finance, and community teams.',
   },
   {
-    emoji: '🚀',
+    emoji: '/iso/bird.png',
     title: 'Launch Campaigns Fast',
     description:
       'Prebuilt manager and participant journeys mean new promotions spin up in minutes without custom engineering.',
   },
   {
-    emoji: '💸',
+    emoji: '/iso/coins.png',
     title: 'Sponsor-Friendly Costs',
     description:
       'Cover fees yourself or let players pay—flexible funding keeps campaigns on budget while modern infrastructure keeps costs low.',
   },
-  {
-    emoji: '📊',
-    title: 'Clear Post-Campaign Reporting',
-    description:
-      'Live pool stats and exportable attestations make it simple to recap performance with investors, partners, and brand stakeholders.',
-  },
+  // {
+  //   emoji: '/iso/lighthouse.png',
+  //   title: 'Clear Post-Campaign Reporting',
+  //   description:
+  //     'Live pool stats and exportable attestations make it simple to recap performance with investors, partners, and brand stakeholders.',
+  // },
 ]
 
 export const Route = createFileRoute('/')({
@@ -147,12 +146,12 @@ function App() {
               disabled: !isCorrectNetwork,
             }}
             illustration={
-              <div className="relative flex h-full w-full max-w-sm items-center justify-center">
-                <div className="h-48 w-48 rounded-full bg-mint-soft blur-3xl" aria-hidden="true" />
+              <div className="relative flex h-full w-full max-w-lg items-center justify-center">
+                <div className="absolute h-64 w-64 rounded-full bg-mint-soft/40 blur-3xl animate-pulse" aria-hidden="true" />
                 <img
-                  src="/svg/bg-dots.svg"
-                  alt=""
-                  className="relative h-60 w-60 rounded-[28px] border border-border/50 bg-card p-6 shadow-[var(--shadow-mint-hard)]"
+                  src="/hero2.png"
+                  alt="Mystery Lottery Hero"
+                  className="relative h-auto w-full max-w-md rounded-3xl drop-shadow-2xl opacity-95"
                 />
               </div>
             }
@@ -167,28 +166,28 @@ function App() {
                     label="Prize pool"
                     value={prizeValue}
                     hint={prizeHint}
-                    icon={<Sparkles size={18} />}
+                    icon={<img src="/iso/coins.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Time left"
                     value={timeValue}
                     hint={timeHint}
-                    icon={<Timer size={18} />}
+                    icon={<img src="/iso/hourglass.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Prizes claimed"
                     value={claimValue}
                     hint={claimHint}
-                    icon={<Trophy size={18} />}
+                    icon={<img src="/iso/chest.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Lottery stage"
                     value={stageValue}
                     hint={stageHint}
-                    icon={<ShieldCheck size={18} />}
+                    icon={<img src="/iso/chain.png" alt="" className="w-5 h-5 object-contain" />}
                   />
                 </div>
               }
@@ -210,7 +209,7 @@ function App() {
           ) : null}
 
           <section className="rounded-[32px] border border-border/60 bg-card/90 px-8 py-10 shadow-[var(--shadow-mint-soft)]">
-            <div className="grid gap-8 lg:grid-cols-4">
+            <div className="grid gap-8 lg:grid-cols-3">
               {featureCards.map((card) => (
                 <FeatureCard key={card.title} {...card} />
               ))}
@@ -225,7 +224,7 @@ function App() {
 function FeatureCard({ emoji, title, description }: FeatureCardProps) {
   return (
     <article className="mint-sheen flex flex-col gap-3 rounded-[24px] border border-border/50 bg-background/70 p-6 shadow-[var(--shadow-mint-soft)] backdrop-blur">
-      <span className="text-3xl">{emoji}</span>
+      <img src={emoji} alt="" className="w-12 h-12 object-contain" />
       <h3 className="text-xl font-semibold text-foreground">{title}</h3>
       <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
     </article>
