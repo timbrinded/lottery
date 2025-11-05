@@ -18,12 +18,10 @@ export function NetworkEnforcementBanner() {
   // Not connected state
   if (needsConnection) {
     return (
-      <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
-        <WifiOff className="text-yellow-600" />
-        <AlertTitle className="text-yellow-900 dark:text-yellow-100">
-          Connect Your Wallet
-        </AlertTitle>
-        <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+      <Alert variant="default" className="border border-mint-warning bg-mint-warning">
+        <WifiOff className="text-mint-warning" />
+        <AlertTitle className="text-foreground">Connect Your Wallet</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
           Please connect your wallet to get started with Mystery Lottery.
         </AlertDescription>
       </Alert>
@@ -33,19 +31,17 @@ export function NetworkEnforcementBanner() {
   // Wrong network state
   if (needsNetworkSwitch) {
     return (
-      <Alert variant="default" className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
-        <AlertCircle className="text-orange-600" />
-        <AlertTitle className="text-orange-900 dark:text-orange-100">
-          Switch to Arc Testnet
-        </AlertTitle>
-        <AlertDescription className="text-orange-800 dark:text-orange-200">
+      <Alert variant="default" className="border border-mint-accent bg-mint-accent">
+        <AlertCircle className="text-mint-accent" />
+        <AlertTitle className="text-foreground">Switch to Arc Testnet</AlertTitle>
+        <AlertDescription className="text-muted-foreground">
           <p className="mb-3">
             Mystery Lottery runs on Arc Testnet. Please switch your network to continue.
           </p>
           <Button
             onClick={() => switchChain({ chainId: arcTestnet.id })}
             size="sm"
-            className="bg-orange-600 hover:bg-orange-700 text-white"
+            className="bg-primary text-primary-foreground shadow-[var(--shadow-mint-soft)] hover:bg-primary/90"
           >
             <Wifi className="mr-2" size={16} />
             Switch to Arc Testnet

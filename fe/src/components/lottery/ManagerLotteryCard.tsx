@@ -271,18 +271,6 @@ export function ManagerLotteryCard({ lottery }: ManagerLotteryCardProps) {
             </Button>
           </Link>
 
-          {/* View Tickets Button */}
-          {hasSecret(lottery.id) && (
-            <Button
-              onClick={() => setShowTicketsModal(true)}
-              variant="outline"
-              size="sm"
-              className="w-full"
-            >
-              View Ticket Status
-            </Button>
-          )}
-
           {/* Secret Management Button */}
           <Button
             onClick={() => setShowRestoreModal(true)}

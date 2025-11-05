@@ -31,7 +31,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
               <Gift className="w-16 h-16 sm:w-20 sm:h-20 text-primary" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
-              🎁 Create Your Mystery Lottery
+              Create Your Mystery Lottery
             </h3>
             <p className="text-sm sm:text-base text-center text-muted-foreground leading-relaxed px-4">
               Set your prizes, choose how many tickets, and pick your deadlines. 

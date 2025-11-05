@@ -13,3 +13,4 @@ export { useClaimPrize } from './useClaimPrize';
 export { useLotterySecrets } from './useLotterySecrets';
 export { useParticipantTickets } from './useParticipantTickets';
 export { useBlockTime } from './useBlockTime';
+export { useLatestLottery } from './useLatestLottery';

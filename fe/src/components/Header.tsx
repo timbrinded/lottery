@@ -11,49 +11,53 @@ export default function Header() {
 
   return (
     <>
-      <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
-        <h1 className="text-xl font-semibold flex-1">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span className="text-2xl">🎁</span>
-            <span className="hidden sm:inline">Mystery Lottery</span>
-          </Link>
-        </h1>
-        
-        <nav className="hidden md:flex items-center gap-2 mr-4">
-          <Link to="/manager">
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-card/85 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-4 sm:px-6">
+          <h1 className="flex-1 text-xl font-semibold text-foreground">
+            <Link
+              to="/"
+              className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-semibold uppercase tracking-[0.35em] text-primary transition hover:bg-primary/20"
+            >
+              <span className="hidden md:inline tracking-normal">Mystery Lottery</span>
+            </Link>
+          </h1>
+
+          <nav className="hidden items-center gap-2 rounded-full border border-border/70 bg-background/80 px-2 py-1 md:flex">
+            <Link to="/manager">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Manager
+              </Button>
+            </Link>
+            <Link to="/participant">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <Ticket className="mr-2 h-4 w-4" />
+                Participant
+              </Button>
+            </Link>
+          </nav>
+
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
-              size="sm"
-              className="text-white hover:bg-gray-700"
+              size="icon"
+              onClick={() => setShowHowItWorks(true)}
+              className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              aria-label="How it works"
             >
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Manager
+              <HelpCircle size={20} />
             </Button>
-          </Link>
-          <Link to="/participant">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-gray-700"
-            >
-              <Ticket className="mr-2 h-4 w-4" />
-              Participant
-            </Button>
-          </Link>
-        </nav>
-        
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowHowItWorks(true)}
-            className="text-white hover:bg-gray-700"
-            aria-label="How it works"
-          >
-            <HelpCircle size={20} />
-          </Button>
-          <NetworkSwitcher />
-          <ConnectButton showBalance={false} chainStatus="none" />
+            <NetworkSwitcher />
+            <ConnectButton showBalance={false} chainStatus="none" />
+          </div>
         </div>
       </header>
 

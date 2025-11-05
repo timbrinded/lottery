@@ -10,20 +10,10 @@ export default function NetworkSwitcher() {
 
   const getNetworkInfo = (id: number) => {
     if (id === localhost.id) {
-      return {
-        name: 'Localhost',
-        color: 'bg-purple-500',
-        icon: '🔧',
-        chain: localhost,
-      }
+      return { name: 'Localhost', color: 'bg-mint-accent', icon: '🔧', chain: localhost }
     }
     if (id === arcTestnet.id) {
-      return {
-        name: 'Arc Testnet',
-        color: 'bg-blue-500',
-        icon: '🧪',
-        chain: arcTestnet,
-      }
+      return { name: 'Arc Testnet', color: 'bg-primary', icon: '🧪', chain: arcTestnet }
     }
     // if (id === arcMainnet.id) {
     //   return {
@@ -33,12 +23,7 @@ export default function NetworkSwitcher() {
     //     chain: arcMainnet,
     //   }
     // }
-    return {
-      name: 'Unknown',
-      color: 'bg-gray-500',
-      icon: '❓',
-      chain: null,
-    }
+    return { name: 'Unknown', color: 'bg-muted', icon: '❓', chain: null }
   }
 
   const currentNetwork = getNetworkInfo(chainId)
@@ -52,15 +37,13 @@ export default function NetworkSwitcher() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-700/50 border border-gray-600 hover:bg-gray-700 transition-colors"
+        className="flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-[var(--shadow-mint-soft)] transition hover:bg-primary/10 hover:text-primary"
       >
         <span className="text-sm">{currentNetwork.icon}</span>
         <span className="text-xs font-medium hidden sm:inline">
           {currentNetwork.name}
         </span>
-        <div
-          className={`w-2 h-2 rounded-full ${currentNetwork.color} animate-pulse`}
-        />
+        <div className={`h-2 w-2 rounded-full ${currentNetwork.color} animate-pulse`} />
         <ChevronDown
           size={14}
           className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -73,9 +56,9 @@ export default function NetworkSwitcher() {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
-            <div className="p-2 border-b border-gray-700">
-              <div className="flex items-center gap-2 px-2 py-1 text-xs text-gray-400">
+          <div className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-[var(--shadow-mint-soft)]">
+            <div className="border-b border-border/60 p-2">
+              <div className="flex items-center gap-2 px-2 py-1 text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
                 <Wifi size={14} />
                 <span>Switch Network</span>
               </div>
@@ -89,22 +72,18 @@ export default function NetworkSwitcher() {
                   <button
                     key={chain.id}
                     onClick={() => handleSwitchNetwork(chain.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition ${
                       isActive
-                        ? 'bg-cyan-600 hover:bg-cyan-700'
-                        : 'hover:bg-gray-700'
+                        ? 'bg-primary/15 text-primary'
+                        : 'hover:bg-primary/10 text-muted-foreground'
                     }`}
                   >
                     <span className="text-lg">{info.icon}</span>
                     <div className="flex-1 text-left">
-                      <div className="text-sm font-medium">{info.name}</div>
-                      <div className="text-xs text-gray-400">
-                        Chain ID: {chain.id}
-                      </div>
+                      <div className="text-sm font-medium text-foreground">{info.name}</div>
+                      <div className="text-xs text-muted-foreground">Chain ID: {chain.id}</div>
                     </div>
-                    {isActive && (
-                      <Check size={16} className="text-cyan-300" />
-                    )}
+                    {isActive && <Check size={16} className="text-primary" />}
                   </button>
                 )
               })}

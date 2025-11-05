@@ -31,17 +31,17 @@ export function ContractNotDeployed() {
             </AlertDescription>
           </Alert>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-            <p className="font-semibold text-blue-900 mb-2">🎯 Supported Networks:</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-800">
+          <div className="rounded-lg border border-mint-success bg-mint-success p-4 text-sm">
+            <p className="mb-2 font-semibold text-mint-success">🎯 Supported Networks:</p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
               <li>Arc Testnet (Chain ID: 1234) - Coming Soon</li>
               <li>Arc Mainnet (Chain ID: 5678) - Coming Soon</li>
             </ul>
           </div>
 
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-sm">
-            <p className="font-semibold text-purple-900 mb-2">👨‍💻 For Developers:</p>
-            <p className="text-purple-800 mb-2">
+          <div className="rounded-lg border border-mint-accent bg-mint-accent p-4 text-sm">
+            <p className="mb-2 font-semibold text-mint-accent">👨‍💻 For Developers:</p>
+            <p className="mb-2 text-muted-foreground">
               Want to deploy the contract yourself? Check out the deployment instructions in the repository.
             </p>
             <Button variant="outline" size="sm" className="mt-2" asChild>
