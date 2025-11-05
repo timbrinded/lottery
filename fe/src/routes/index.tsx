@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { NetworkEnforcementBanner } from '@/components/shared/NetworkEnforcementBanner'
 import { useNetworkEnforcement } from '@/hooks/useNetworkEnforcement'
-import { useIsLotteryManager } from '@/hooks/useIsLotteryManager'
+
 import { useLatestLottery } from '@/hooks/useLatestLottery'
 import type { LatestLotteryData } from '@/hooks/useLatestLottery'
 import { useFriendlyTime, getRelativeTime } from '@/hooks/useFriendlyTime'
@@ -183,27 +183,33 @@ function App() {
                   </div>
                 </button>
 
-                {/* Start Lottery CTA - Brushed Steel Effect */}
+                {/* Start Lottery CTA - Iron Texture */}
                 <button
                   onClick={ctaSecondary.onClick}
                   disabled={!isCorrectNetwork}
-                  className="group relative overflow-hidden rounded-[24px] border border-zinc-400/40 bg-gradient-to-br from-zinc-200 via-zinc-300 to-zinc-200 p-8 text-left shadow-[0_4px_16px_0_rgba(0,0,0,0.1),inset_0_1px_0_0_rgba(255,255,255,0.5)] transition-all hover:scale-[1.02] hover:shadow-[0_4px_20px_0_rgba(0,0,0,0.15),inset_0_1px_0_0_rgba(255,255,255,0.6)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                  className="group relative overflow-hidden rounded-[24px] border-2 border-zinc-700/40 p-8 text-left shadow-[0_4px_16px_0_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:scale-[1.02] hover:shadow-[0_4px_20px_0_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.15)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                  style={{
+                    backgroundImage: 'url(/iron.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }}
                 >
-                  {/* Brushed metal texture */}
-                  <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.3)_50%,transparent_100%)] bg-[length:200%_100%] opacity-60" aria-hidden="true" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" aria-hidden="true" />
+                  {/* Dark overlay for text contrast */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-zinc-900/40 via-zinc-800/30 to-zinc-900/50" aria-hidden="true" />
+                  {/* Metallic shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20" aria-hidden="true" />
                   
-                  <div className="absolute right-4 top-4 transition-transform group-hover:scale-110">
-                    <img src="/iso/sm/chest.png" alt="" className="h-16 w-16 object-contain" />
+                  <div className="absolute right-4 top-4 opacity-80 transition-transform group-hover:scale-110">
+                    <img src="/iso/sm/chest.png" alt="" className="h-16 w-16 object-contain drop-shadow-lg" />
                   </div>
                   <div className="relative">
-                    <div className="mb-3 text-3xl font-bold text-zinc-800">
+                    <div className="mb-3 text-3xl font-bold text-white drop-shadow-lg">
                       Start a New Lottery
                     </div>
-                    <p className="text-base text-zinc-700">
+                    <p className="text-base text-zinc-100 drop-shadow">
                       Create waves with your own mystery draw. Fair, transparent, unforgettable.
                     </p>
-                    <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-zinc-800">
+                    <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-zinc-100">
                       <span>Launch your draw</span>
                       <span className="transition-transform group-hover:translate-x-1">→</span>
                     </div>
