@@ -1,78 +1,143 @@
-import { useAccount } from 'wagmi';
-import { useReadLotteryFactory } from '@/contracts/hooks';
+import { useEffect, useMemo, useState } from 'react';
+import { useAccount, usePublicClient } from 'wagmi';
+import { useLotteryFactoryAddress, useReadLotteryFactory } from '@/contracts/hooks';
+import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
+
+const MAX_CREATOR_LOOKUPS = 100;
 
 interface IsLotteryManagerResult {
+  /**
+   * Whether the connected wallet can access manager tooling.
+   * Any connected wallet is treated as a manager so they can create lotteries.
+   */
   isManager: boolean;
+  /**
+   * Whether the connected wallet has previously created at least one lottery.
+   */
+  hasCreatedLottery: boolean;
   isLoading: boolean;
   error: Error | null;
 }
 
 /**
- * Hook to detect if the connected user owns any lotteries
- * Checks if the user's address matches any lottery creator
+ * Hook to determine manager eligibility and ownership state for the connected wallet.
+ *
+ * - All connected wallets are allowed to act as managers (can create lotteries).
+ * - `hasCreatedLottery` indicates whether the wallet is the creator of any existing lotteries.
  */
 export function useIsLotteryManager(): IsLotteryManagerResult {
   const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const contractAddress = useLotteryFactoryAddress();
 
-  // Get total lottery count
+  // Get the next available lottery ID (counter starts at 1 and increments post-creation)
   const {
     data: lotteryCounter,
     isLoading: isLoadingCounter,
     error: counterError,
   } = useReadLotteryFactory('lotteryCounter', []);
 
-  // Calculate counter value for enabling queries
-  const counter = lotteryCounter ? Number(lotteryCounter) : 0;
-  const hasLotteries = counter > 0;
-  const canCheck = isConnected && address && hasLotteries;
+  const totalLotteries = lotteryCounter ? Math.max(Number(lotteryCounter) - 1, 0) : 0;
 
-  // Use multiple reads to check if user created any lottery
-  // Always call hooks unconditionally, but use enabled flag to control execution
-  const {
-    data: firstLotteryCreator,
-    isLoading: isLoadingFirst,
-  } = useReadLotteryFactory('getLotteryCreator', [1n], {
-    query: { enabled: canCheck && counter >= 1 },
-  });
+  const shouldCheckCreators = Boolean(
+    contractAddress &&
+      address &&
+      isConnected &&
+      totalLotteries > 0 &&
+      publicClient,
+  );
 
-  const {
-    data: secondLotteryCreator,
-    isLoading: isLoadingSecond,
-  } = useReadLotteryFactory('getLotteryCreator', [2n], {
-    query: { enabled: canCheck && counter >= 2 },
-  });
+  const [creatorAddresses, setCreatorAddresses] = useState<string[]>([]);
+  const [creatorsError, setCreatorsError] = useState<Error | null>(null);
+  const [isLoadingCreators, setIsLoadingCreators] = useState(false);
 
-  const {
-    data: thirdLotteryCreator,
-    isLoading: isLoadingThird,
-  } = useReadLotteryFactory('getLotteryCreator', [3n], {
-    query: { enabled: canCheck && counter >= 3 },
-  });
+  useEffect(() => {
+    if (!shouldCheckCreators || !contractAddress || !publicClient || !address) {
+      setCreatorAddresses([]);
+      setCreatorsError(null);
+      setIsLoadingCreators(false);
+      return;
+    }
 
-  const isLoading = isLoadingCounter || isLoadingFirst || isLoadingSecond || isLoadingThird;
+    let cancelled = false;
 
-  // If not connected or no lotteries exist, user is not a manager
-  if (!canCheck) {
-    return {
-      isManager: false,
-      isLoading: isLoadingCounter,
-      error: counterError as Error | null,
+    const loadCreators = async () => {
+      setIsLoadingCreators(true);
+
+      try {
+        const lookups = Math.min(totalLotteries, MAX_CREATOR_LOOKUPS);
+
+        const contracts = Array.from({ length: lookups }, (_, index) => ({
+          address: contractAddress,
+          abi: LOTTERY_FACTORY_ABI as any,
+          functionName: 'getLotteryCreator',
+          args: [BigInt(totalLotteries - index)] as const,
+        }));
+
+        const results = await publicClient.multicall({
+          allowFailure: true,
+          contracts,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const creators = results
+          .map((result) => {
+            if (result.status !== 'success') {
+              return null;
+            }
+
+            const [creator] = result.result as [string, `0x${string}`];
+            return creator;
+          })
+          .filter((value): value is string => Boolean(value));
+
+        setCreatorAddresses(creators);
+        setCreatorsError(null);
+      } catch (err) {
+        if (!cancelled) {
+          setCreatorAddresses([]);
+          setCreatorsError(
+            err instanceof Error ? err : new Error('Failed to load lottery creators'),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingCreators(false);
+        }
+      }
     };
-  }
 
-  // Check if user is creator of any checked lottery
-  const first = firstLotteryCreator as any;
-  const second = secondLotteryCreator as any;
-  const third = thirdLotteryCreator as any;
-  
-  const isManager =
-    (first && first[0]?.toLowerCase() === address.toLowerCase()) ||
-    (second && second[0]?.toLowerCase() === address.toLowerCase()) ||
-    (third && third[0]?.toLowerCase() === address.toLowerCase());
+    loadCreators();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    shouldCheckCreators,
+    contractAddress,
+    publicClient,
+    totalLotteries,
+    address,
+  ]);
+
+  const hasCreatedLottery = useMemo(() => {
+    if (!address || creatorAddresses.length === 0) {
+      return false;
+    }
+
+    const normalized = address.toLowerCase();
+    return creatorAddresses.some((creator) => creator.toLowerCase() === normalized);
+  }, [address, creatorAddresses]);
+
+  const isLoading = isLoadingCounter || isLoadingCreators;
 
   return {
-    isManager: Boolean(isManager),
+    isManager: Boolean(address && isConnected),
+    hasCreatedLottery,
     isLoading,
-    error: counterError as Error | null,
+    error: (counterError || creatorsError || null) as Error | null,
   };
 }

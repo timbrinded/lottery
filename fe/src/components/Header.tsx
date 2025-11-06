@@ -28,7 +28,7 @@ export default function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                className="text-muted-foreground hover:bg-orange-100 hover:text-slate-700"
               >
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Manager
@@ -44,18 +44,19 @@ export default function Header() {
                 Participant
               </Button>
             </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHowItWorks(true)}
+              className="text-muted-foreground hover:bg-violet-50 hover:text-violet-950"
+              aria-label="How it works"
+            >
+              <HelpCircle className="mr-2 h-4 w-4" />
+              How It Works
+            </Button>
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowHowItWorks(true)}
-              className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
-              aria-label="How it works"
-            >
-              <HelpCircle size={20} />
-            </Button>
             <NetworkSwitcher />
             <ConnectButton showBalance={false} chainStatus="none" />
           </div>

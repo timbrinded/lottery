@@ -13,7 +13,11 @@ export function HookVerification() {
   const networkState = useNetworkEnforcement();
 
   // Test useIsLotteryManager
-  const { isManager, isLoading: isLoadingManager } = useIsLotteryManager();
+  const {
+    isManager,
+    hasCreatedLottery,
+    isLoading: isLoadingManager,
+  } = useIsLotteryManager();
 
   // Test useFriendlyTime with a timestamp 1 hour from now
   const oneHourFromNow = Math.floor(Date.now() / 1000) + 3600;
@@ -52,6 +56,7 @@ export function HookVerification() {
         <h3 className="font-semibold mb-2">useIsLotteryManager</h3>
         <div className="space-y-1 text-sm">
           <p>Is Manager: {isManager ? '✅' : '❌'}</p>
+          <p>Has Created Lottery: {hasCreatedLottery ? '✅' : '❌'}</p>
           <p>Loading: {isLoadingManager ? '⏳' : '✅'}</p>
         </div>
       </div>

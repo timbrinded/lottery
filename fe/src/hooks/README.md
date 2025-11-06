@@ -21,19 +21,20 @@ const { isCorrectNetwork, needsNetworkSwitch } = useNetworkEnforcement();
 ```
 
 ### `useIsLotteryManager`
-Detects if the connected user owns any lotteries.
+Determines manager access and creator ownership state for the connected wallet.
 
 **Returns:**
-- `isManager`: Whether user is a lottery creator
+- `isManager`: Whether the connected wallet can access manager tooling (true for any connected wallet)
+- `hasCreatedLottery`: Whether the wallet has created at least one lottery
 - `isLoading`: Loading state
 - `error`: Error if any
 
 **Usage:**
 ```tsx
-const { isManager, isLoading } = useIsLotteryManager();
+const { isManager, hasCreatedLottery, isLoading } = useIsLotteryManager();
 ```
 
-**Note:** Currently checks first 3 lotteries for performance. In production, use events or subgraph for efficient lookup.
+**Note:** Performs batched creator lookups across the most recent 100 lotteries. For production scale, prefer indexed data sources (events, subgraph) or pagination to reduce RPC load.
 
 ### `useFriendlyTime`
 Converts timestamps to human-readable format with real-time updates.
@@ -142,7 +143,7 @@ import { HookVerification } from '@/components/shared/HookVerification';
 ### Performance Considerations
 
 **Current Limitations:**
-- `useIsLotteryManager`: Only checks first 3 lotteries
+- `useIsLotteryManager`: Scans up to the most recent 100 lotteries (consider indexing for larger histories)
 - `useUserParticipations`: Only checks first 10 lotteries
 
 **Production Recommendations:**
