@@ -3,17 +3,17 @@
   "name": "Mystery Lottery - Fair & Transparent Prizes",
   "icons": [
     {
-      "src": "iso/bird.png",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "src": "iso/sm/bird.png",
+      "sizes": "64x64",
       "type": "image/png"
     },
     {
-      "src": "iso/bird.png",
+      "src": "iso/lg/bird-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "iso/bird.png",
+      "src": "iso/lg/bird-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }

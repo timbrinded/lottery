@@ -78,7 +78,7 @@ export const arcTestnet = defineChain({
 // });
 
 // Determine available chains based on environment
-const isDevelopment = import.meta.env.DEV;
+const isDevelopment = import.meta.env.LOCAL_MODE;
 
 // In development, allow switching between all networks
 // In production, only show mainnet

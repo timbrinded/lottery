@@ -91,7 +91,7 @@ export function RaffleTicket({
             {statusInfo.label}
           </span>
           <div className="opacity-60 shrink-0">
-            <img src="ticket.png" alt="" className="w-24 h-24 object-contain rounded-lg" />
+            <img src="/iso/lg/ticket.png" alt="" className="w-24 h-24 object-contain rounded-lg" />
           </div>
         </div>
       </header>
@@ -106,7 +106,7 @@ export function RaffleTicket({
           </div>
           <p className="text-3xl font-bold text-amber-950" style={{ fontFamily: '"Caveat", cursive' }}>{poolEth}</p>
           <p className="text-sm text-amber-900/80" style={{ fontFamily: '"Caveat", cursive' }}>
-            Winner receives the entire current pool when the reveal concludes.
+            Each winner receives the prize set by manager
           </p>
         </div>
         <div className="space-y-3">

@@ -28,7 +28,7 @@ export function HowItWorksModal({ open, onOpenChange }: HowItWorksModalProps) {
 
           <TabsContent value="faucet" className="space-y-3 sm:space-y-4 py-4 sm:py-6 animate-in fade-in-50 duration-300">
             <div className="flex justify-center">
-              <img src="/iso/coins.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+              <img src="/iso/lg/coins.png" alt="" className="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-center px-2">
               Get Testnet USDC

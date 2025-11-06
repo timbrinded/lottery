@@ -137,7 +137,7 @@ function App() {
             {/* Hero image as faded background */}
             <div className="absolute inset-0 flex items-center justify-center opacity-80" aria-hidden="true">
               <img
-                src="/hero2.png"
+                src="/hero/lg/hero2.png"
                 alt=""
                 className="h-full w-full object-cover object-center"
               />
@@ -189,7 +189,7 @@ function App() {
                   disabled={!isCorrectNetwork}
                   className="group relative overflow-hidden rounded-[24px] border-2 border-zinc-700/40 p-8 text-left shadow-[0_4px_16px_0_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.1)] transition-all hover:scale-[1.02] hover:shadow-[0_4px_20px_0_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.15)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                   style={{
-                    backgroundImage: 'url(/iron.jpg)',
+                    backgroundImage: 'url(/wood.jpg)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                   }}
