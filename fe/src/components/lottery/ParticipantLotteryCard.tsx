@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Countdown } from "@/components/shared/Countdown";
-import { CheckCircle, ExternalLink, Trophy, Clock } from "lucide-react";
+import { CheckCircle, ExternalLink, Trophy } from "lucide-react";
 
 interface LotteryData {
   id: bigint;

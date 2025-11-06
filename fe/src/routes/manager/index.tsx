@@ -11,7 +11,7 @@ import { ManagerLotteryCard } from "@/components/lottery/ManagerLotteryCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ContractNotDeployed } from "@/components/ContractNotDeployed";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Plus, Sparkles } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { LOTTERY_FACTORY_ABI } from "@/contracts/LotteryFactory";
 
 export const Route = createFileRoute("/manager/")({

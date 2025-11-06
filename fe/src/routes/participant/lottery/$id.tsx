@@ -68,7 +68,7 @@ function getStateBadgeVariant(
 
 function ParticipantLotteryDetail() {
   const { id } = Route.useParams();
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const contractAddress = useLotteryFactoryAddress();
   const [lottery, setLottery] = useState<LotteryData | null>(null);
   const { participations } = useUserParticipations();

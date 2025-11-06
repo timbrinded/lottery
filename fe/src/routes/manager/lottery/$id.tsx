@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { formatEther } from "viem";
 import {
   useLotteryFactoryAddress,
-  useWatchLotteryFactoryEvent,
 } from "@/contracts/hooks";
 import { LOTTERY_FACTORY_ABI } from "@/contracts/LotteryFactory";
 import { Button } from "@/components/ui/button";
