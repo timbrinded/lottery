@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicClient, useReadContracts } from 'wagmi';
 import {
@@ -36,6 +36,7 @@ export type LatestLotteryData = {
 type LatestLotteryResult = {
   lottery: LatestLotteryData | null;
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   hasLottery: boolean;
   lotteryId: bigint | null;
@@ -54,22 +55,28 @@ export function useLatestLottery(): LatestLotteryResult {
     error: counterError,
   } = useReadLotteryFactory('lotteryCounter', [], {
     query: {
-      refetchInterval: 10_000,
+      refetchInterval: 60_000,
     },
   });
 
   const counterValue = lotteryCounter as bigint | undefined;
+  const [stableLotteryId, setStableLotteryId] = useState<bigint | null>(null);
 
   // Lottery IDs start at 1 and lotteryCounter always points to the next ID.
-  const latestLotteryId = useMemo(() => {
-    if (!counterValue || counterValue <= 1n) {
-      return null;
+  useEffect(() => {
+    if (counterValue === undefined) {
+      return;
     }
-    return counterValue - 1n;
+    if (counterValue <= 1n) {
+      setStableLotteryId(null);
+      return;
+    }
+    const nextId = counterValue - 1n;
+    setStableLotteryId((prev) => (prev === nextId ? prev : nextId));
   }, [counterValue]);
 
   const contracts = useMemo(() => {
-    if (!contractAddress || latestLotteryId === null) {
+    if (!contractAddress || stableLotteryId === null) {
       return [] as any[];
     }
 
@@ -78,16 +85,16 @@ export function useLatestLottery(): LatestLotteryResult {
         address: contractAddress as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI as any,
         functionName: 'lotteries',
-        args: [latestLotteryId],
+        args: [stableLotteryId],
       },
       {
         address: contractAddress as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI as any,
         functionName: 'getLotteryTickets',
-        args: [latestLotteryId],
+        args: [stableLotteryId],
       },
     ] as any[];
-  }, [contractAddress, latestLotteryId]);
+  }, [contractAddress, stableLotteryId]);
 
   const {
     data: latestLotteryData,
@@ -97,7 +104,7 @@ export function useLatestLottery(): LatestLotteryResult {
     contracts,
     query: {
       enabled: contracts.length > 0,
-      refetchInterval: 10_000,
+      refetchInterval: 60_000,
     },
   });
 
@@ -120,18 +127,23 @@ export function useLatestLottery(): LatestLotteryResult {
   } = useQuery({
     queryKey: [
       'latestLottery',
-      latestLotteryId ? latestLotteryId.toString() : 'none',
+      stableLotteryId ? stableLotteryId.toString() : 'none',
       'ticketDetails',
       ticketCount,
     ],
     enabled:
       Boolean(publicClient) &&
       Boolean(contractAddress) &&
-      latestLotteryId !== null &&
+      stableLotteryId !== null &&
       ticketCount > 0,
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
-      if (!publicClient || latestLotteryId === null || ticketCount === 0 || !contractAddress) {
+      if (
+        !publicClient ||
+        stableLotteryId === null ||
+        ticketCount === 0 ||
+        !contractAddress
+      ) {
         return [];
       }
 
@@ -139,7 +151,7 @@ export function useLatestLottery(): LatestLotteryResult {
         address: contractAddress as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI as any,
         functionName: 'tickets',
-        args: [latestLotteryId, BigInt(index)],
+        args: [stableLotteryId, BigInt(index)],
       }));
 
       const results = await publicClient.multicall({
@@ -158,13 +170,14 @@ export function useLatestLottery(): LatestLotteryResult {
   } = useQuery({
     queryKey: [
       'latestLottery',
-      latestLotteryId ? latestLotteryId.toString() : 'none',
+      stableLotteryId ? stableLotteryId.toString() : 'none',
       'creationTx',
     ],
-    enabled: Boolean(publicClient) && Boolean(contractAddress) && latestLotteryId !== null,
-    refetchInterval: 10_000,
+    enabled:
+      Boolean(publicClient) && Boolean(contractAddress) && stableLotteryId !== null,
+    refetchInterval: 60_000,
     queryFn: async () => {
-      if (!publicClient || latestLotteryId === null || !contractAddress) {
+      if (!publicClient || stableLotteryId === null || !contractAddress) {
         return null;
       }
 
@@ -172,7 +185,7 @@ export function useLatestLottery(): LatestLotteryResult {
         address: contractAddress as `0x${string}`,
         event: LOTTERY_CREATED_EVENT,
         args: {
-          lotteryId: latestLotteryId,
+          lotteryId: stableLotteryId,
         },
         fromBlock: 0n,
         toBlock: 'latest',
@@ -184,7 +197,7 @@ export function useLatestLottery(): LatestLotteryResult {
   });
 
   const prizeContracts = useMemo(() => {
-    if (!contractAddress || latestLotteryId === null) {
+    if (!contractAddress || stableLotteryId === null) {
       return [] as any[];
     }
 
@@ -193,10 +206,10 @@ export function useLatestLottery(): LatestLotteryResult {
         address: contractAddress as `0x${string}`,
         abi: LOTTERY_FACTORY_ABI as any,
         functionName: 'getLotteryPrizes',
-        args: [latestLotteryId],
+        args: [stableLotteryId],
       },
     ] as any[];
-  }, [contractAddress, latestLotteryId]);
+  }, [contractAddress, stableLotteryId]);
 
   const {
     data: prizeData,
@@ -205,12 +218,14 @@ export function useLatestLottery(): LatestLotteryResult {
     contracts: prizeContracts,
     query: {
       enabled: prizeContracts.length > 0,
-      refetchInterval: 10_000,
+      refetchInterval: 60_000,
     },
   });
 
+  const [stableLottery, setStableLottery] = useState<LatestLotteryData | null>(null);
+
   const lottery = useMemo<LatestLotteryData | null>(() => {
-    if (!latestLotteryData || latestLotteryId === null) {
+    if (!latestLotteryData || stableLotteryId === null) {
       return null;
     }
 
@@ -266,7 +281,7 @@ export function useLatestLottery(): LatestLotteryResult {
     const claimPercentage = totalPrizes > 0 ? Math.round((claimedPrizes / totalPrizes) * 100) : 0;
 
     return {
-      id: latestLotteryId,
+      id: stableLotteryId,
       creator: data[0] as string,
       creatorCommitment: data[1] as `0x${string}`,
       creationTxHash: creationTxHash ?? undefined,
@@ -285,18 +300,40 @@ export function useLatestLottery(): LatestLotteryResult {
       allPrizesClaimed: totalPrizes > 0 && unclaimedPrizes === 0,
       claimPercentage,
     };
-  }, [latestLotteryData, latestLotteryId, prizeData, ticketDetailsData, creationTxHash]);
+  }, [latestLotteryData, stableLotteryId, prizeData, ticketDetailsData, creationTxHash]);
 
-  return {
-    lottery,
-    isLoading:
-      isCounterLoading ||
+  useEffect(() => {
+    if (lottery) {
+      setStableLottery(lottery);
+      return;
+    }
+    if (stableLotteryId === null) {
+      setStableLottery(null);
+    }
+  }, [lottery, stableLotteryId]);
+
+  const resolvedLottery = lottery ?? stableLottery;
+  const isFetchingInBackground =
+    resolvedLottery !== null &&
+    (isCounterLoading ||
       isLatestLoading ||
       isTicketDetailsPending ||
       isPrizeLoading ||
-      isCreationTxLoading,
+      isCreationTxLoading);
+  const isInitialLoad =
+    resolvedLottery === null &&
+    (isCounterLoading ||
+      isLatestLoading ||
+      isTicketDetailsPending ||
+      isPrizeLoading ||
+      isCreationTxLoading);
+
+  return {
+    lottery: resolvedLottery,
+    isLoading: isInitialLoad,
+    isFetching: isFetchingInBackground,
     error: (latestLotteryError as Error | null) ?? (counterError as Error | null),
-    hasLottery: lottery !== null,
-    lotteryId: latestLotteryId,
+    hasLottery: resolvedLottery !== null,
+    lotteryId: stableLotteryId,
   };
 }
