@@ -9,7 +9,7 @@ import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
 import { parseAbiItem } from 'viem';
 
 const LOTTERY_CREATED_EVENT = parseAbiItem(
-  'event LotteryCreated(uint256 indexed lotteryId, address indexed creator, uint256 totalPrizePool, uint256 numberOfTickets, uint256 commitDeadline, uint256 revealTime)',
+  'event LotteryCreated(uint256 indexed lotteryId, address indexed creator, uint256 totalPrizePool, uint256 numberOfTickets, uint256 commitDeadline, uint256 revealTime, uint256 claimDeadline)',
 );
 
 export type LatestLotteryData = {
