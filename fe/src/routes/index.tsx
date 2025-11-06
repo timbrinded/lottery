@@ -220,7 +220,7 @@ function App() {
                 alt=""
                 width={768}
                 height={512}
-                fetchpriority="high"
+                fetchPriority="high"
                 decoding="async"
                 className="h-full w-full object-cover object-center"
               />
