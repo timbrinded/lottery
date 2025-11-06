@@ -121,7 +121,7 @@ export const config = getDefaultConfig({
   projectId: walletConnectProjectId,
   chains: availableChains as any,
   transports: {
-    [localhost.id]: http(),
+    // [localhost.id]: http(),
     [arcTestnet.id]: http(),
     // [arcMainnet.id]: http(),
   },
