@@ -16,7 +16,7 @@ export function ShareButtons({ prizeAmount }: ShareButtonsProps) {
   const currentUrl = window.location.href;
 
   // Generate Twitter share text
-  const twitterText = `I just won ${prizeInEth} USDC in a mystery lottery! 🎉`;
+  const twitterText = `I just won ${prizeInEth} USDC in a Blottery! 🎉`;
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}&url=${encodeURIComponent(currentUrl)}`;
 
   const handleCopyLink = async () => {

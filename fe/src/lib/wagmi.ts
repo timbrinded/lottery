@@ -117,7 +117,7 @@ const buildIconUrl = (path: string) =>
 
 // Wagmi configuration with RainbowKit
 export const config = getDefaultConfig({
-  appName: "Mystery Lottery",
+  appName: "Blottery",
   projectId: walletConnectProjectId,
   chains: availableChains as any,
   transports: {
@@ -126,6 +126,6 @@ export const config = getDefaultConfig({
     // [arcMainnet.id]: http(),
   },
   appIcon: buildIconUrl("/arc-logo.png"),
-  appDescription: "Mystery Lottery",
+  appDescription: "Blottery",
   ssr: false,
 });

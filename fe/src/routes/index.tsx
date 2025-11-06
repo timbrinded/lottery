@@ -45,6 +45,8 @@ const featureCards: FeatureCardProps[] = [
   // },
 ]
 
+const ARC_EXPLORER_TX_BASE_URL = 'https://testnet.arcscan.app/tx/'
+
 export const Route = createFileRoute('/')({
   component: App,
 })
@@ -459,18 +461,28 @@ function getTicketStatus(
 
 function getProofItems(
   lottery: LatestLotteryData | null,
-): { label: string; value: string }[] {
+): { label: string; value: string; href?: string }[] {
   if (!lottery) {
     return [
-      { label: 'Commit hash', value: 'No lottery yet' },
+      { label: 'Creator commitment', value: 'No lottery yet' },
+      { label: 'Creation tx', value: 'No lottery yet' },
       { label: 'Random seed', value: 'No lottery yet' },
       { label: 'Tickets committed', value: '0' },
       { label: 'Prizes claimed', value: 'Awaiting reveal' },
     ]
   }
 
-  return [
-    { label: 'Commit hash', value: truncateMiddle(lottery.creatorCommitment) },
+  const creationTx = lottery.creationTxHash
+  const items: { label: string; value: string; href?: string }[] = [
+    {
+      label: 'Creator commitment',
+      value: truncateMiddle(lottery.creatorCommitment),
+    },
+    {
+      label: 'Creation tx',
+      value: creationTx ? truncateMiddle(creationTx) : 'Resolving…',
+      href: creationTx ? getArcExplorerTxUrl(creationTx) : undefined,
+    },
     { label: 'Random seed', value: formatRandomSeed(lottery.randomSeed) },
     {
       label: 'Tickets committed',
@@ -481,6 +493,8 @@ function getProofItems(
     },
     { label: 'Prizes claimed', value: formatPrizeClaims(lottery) },
   ]
+
+  return items
 }
 
 function formatRandomSeed(seed: bigint): string {
@@ -504,6 +518,18 @@ function formatPrizeClaims(lottery: LatestLotteryData): string {
   }
   const summary = `${lottery.claimedPrizes}/${lottery.totalPrizes}`
   return lottery.allPrizesClaimed ? `${summary} (100%)` : `${summary} (${lottery.claimPercentage}%)`
+}
+
+function getArcExplorerTxUrl(hash: string): string | undefined {
+  const normalized = hash.toLowerCase()
+  if (!normalized.startsWith('0x')) {
+    return undefined
+  }
+  const withoutPrefix = normalized.slice(2)
+  if (!withoutPrefix || /^0+$/.test(withoutPrefix)) {
+    return undefined
+  }
+  return `${ARC_EXPLORER_TX_BASE_URL}${hash}`
 }
 
 function formatDurationCompact(seconds: number): string {

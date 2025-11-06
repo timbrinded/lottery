@@ -193,7 +193,7 @@ export function CreateLotteryForm({
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Create Mystery Lottery</CardTitle>
+        <CardTitle>Create Blottery</CardTitle>
         <CardDescription>
           Set up a new lottery with hidden prize values
         </CardDescription>

@@ -6,11 +6,17 @@ import {
   useReadLotteryFactory,
 } from '@/contracts/hooks';
 import { LOTTERY_FACTORY_ABI } from '@/contracts/LotteryFactory';
+import { parseAbiItem } from 'viem';
+
+const LOTTERY_CREATED_EVENT = parseAbiItem(
+  'event LotteryCreated(uint256 indexed lotteryId, address indexed creator, uint256 totalPrizePool, uint256 numberOfTickets, uint256 commitDeadline, uint256 revealTime)',
+);
 
 export type LatestLotteryData = {
   id: bigint;
   creator: string;
   creatorCommitment: `0x${string}`;
+  creationTxHash?: `0x${string}`;
   totalPrizePool: bigint;
   commitDeadline: bigint;
   revealTime: bigint;
@@ -146,6 +152,37 @@ export function useLatestLottery(): LatestLotteryResult {
   });
   const isTicketDetailsPending = isTicketDetailsLoading || isTicketDetailsFetching;
 
+  const {
+    data: creationTxHash,
+    isLoading: isCreationTxLoading,
+  } = useQuery({
+    queryKey: [
+      'latestLottery',
+      latestLotteryId ? latestLotteryId.toString() : 'none',
+      'creationTx',
+    ],
+    enabled: Boolean(publicClient) && Boolean(contractAddress) && latestLotteryId !== null,
+    refetchInterval: 10_000,
+    queryFn: async () => {
+      if (!publicClient || latestLotteryId === null || !contractAddress) {
+        return null;
+      }
+
+      const logs = await publicClient.getLogs({
+        address: contractAddress as `0x${string}`,
+        event: LOTTERY_CREATED_EVENT,
+        args: {
+          lotteryId: latestLotteryId,
+        },
+        fromBlock: 0n,
+        toBlock: 'latest',
+      });
+
+      const latestLog = logs.at(-1);
+      return latestLog?.transactionHash ?? null;
+    },
+  });
+
   const prizeContracts = useMemo(() => {
     if (!contractAddress || latestLotteryId === null) {
       return [] as any[];
@@ -232,6 +269,7 @@ export function useLatestLottery(): LatestLotteryResult {
       id: latestLotteryId,
       creator: data[0] as string,
       creatorCommitment: data[1] as `0x${string}`,
+      creationTxHash: creationTxHash ?? undefined,
       totalPrizePool: data[2] as bigint,
       commitDeadline: data[3] as bigint,
       revealTime: data[4] as bigint,
@@ -247,11 +285,16 @@ export function useLatestLottery(): LatestLotteryResult {
       allPrizesClaimed: totalPrizes > 0 && unclaimedPrizes === 0,
       claimPercentage,
     };
-  }, [latestLotteryData, latestLotteryId, prizeData, ticketDetailsData]);
+  }, [latestLotteryData, latestLotteryId, prizeData, ticketDetailsData, creationTxHash]);
 
   return {
     lottery,
-    isLoading: isCounterLoading || isLatestLoading || isTicketDetailsPending || isPrizeLoading,
+    isLoading:
+      isCounterLoading ||
+      isLatestLoading ||
+      isTicketDetailsPending ||
+      isPrizeLoading ||
+      isCreationTxLoading,
     error: (latestLotteryError as Error | null) ?? (counterError as Error | null),
     hasLottery: lottery !== null,
     lotteryId: latestLotteryId,

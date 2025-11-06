@@ -69,7 +69,7 @@ function CreateLotteryPage() {
       {!showDistribution ? (
         <>
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Create Mystery Lottery</h1>
+            <h1 className="text-3xl font-bold mb-2">Create Blottery</h1>
             <p className="text-muted-foreground">
               Set up a new lottery with hidden prize values
             </p>

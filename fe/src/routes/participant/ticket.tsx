@@ -431,7 +431,7 @@ function TicketPage() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
           <Ticket className="w-8 h-8 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold mb-2">Mystery Lottery Ticket</h1>
+        <h1 className="text-3xl font-bold mb-2">Blottery Ticket</h1>
         <div className="flex items-center justify-center gap-3">
           <p className="text-muted-foreground">
             Lottery #{lotteryId.toString()} • Ticket #{ticketIndex}

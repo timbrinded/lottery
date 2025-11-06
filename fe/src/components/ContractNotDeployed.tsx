@@ -16,7 +16,7 @@ export function ContractNotDeployed() {
           <div className="text-6xl mb-4">🏗️</div>
           <CardTitle className="text-2xl">Contract Not Deployed Yet</CardTitle>
           <CardDescription className="text-base mt-2">
-            The Mystery Lottery smart contract hasn't been deployed to this network yet. We're working on it!
+            The Blottery smart contract hasn't been deployed to this network yet. We're working on it!
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

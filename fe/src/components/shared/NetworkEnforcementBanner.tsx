@@ -22,7 +22,7 @@ export function NetworkEnforcementBanner() {
         <WifiOff className="text-mint-warning" />
         <AlertTitle className="text-foreground">Connect Your Wallet</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Please connect your wallet to get started with Mystery Lottery.
+          Please connect your wallet to get started with Blottery.
         </AlertDescription>
       </Alert>
     );
@@ -36,7 +36,7 @@ export function NetworkEnforcementBanner() {
         <AlertTitle className="text-foreground">Switch to Arc Testnet</AlertTitle>
         <AlertDescription className="text-muted-foreground">
           <p className="mb-3">
-            Mystery Lottery runs on Arc Testnet. Please switch your network to continue.
+            Blottery runs on Arc Testnet. Please switch your network to continue.
           </p>
           <Button
             onClick={() => switchChain({ chainId: arcTestnet.id })}

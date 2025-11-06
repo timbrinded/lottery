@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 type ProofItem = {
   label: string
   value: string
+  href?: string
 }
 
 type ProofPanelProps = {
@@ -38,14 +39,30 @@ export function ProofPanel({
       <p className="mt-2 text-sm text-muted-foreground relative z-10">{description}</p>
 
       <div className="mt-6 space-y-3 rounded-[18px] border border-border/40 bg-secondary/40 p-4 font-mono text-xs text-muted-foreground relative z-10">
-        {proofs.map((item) => (
-          <div key={item.label} className="space-y-1">
-            <span className="uppercase tracking-[0.3em] text-muted-foreground/70">{item.label}</span>
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-background px-2 py-1 text-foreground shadow-inner">
-              {item.value}
+        {proofs.map((item) => {
+          const contentClassName =
+            'overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-background px-2 py-1 text-foreground shadow-inner'
+
+          return (
+            <div key={item.label} className="space-y-1">
+              <span className="uppercase tracking-[0.3em] text-muted-foreground/70">{item.label}</span>
+              {item.href
+                ? (
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${contentClassName} transition-colors underline decoration-dotted underline-offset-2 hover:text-primary`}
+                  >
+                    {item.value}
+                  </a>
+                )
+                : (
+                  <div className={contentClassName}>{item.value}</div>
+                )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </section>
   )
