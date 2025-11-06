@@ -6,6 +6,7 @@
     "dev": "vite --port 3000",
     "build": "vite build && tsc",
     "serve": "vite preview",
+    "typecheck":"tsc --noEmit --extendedDiagnostics --incremental",
     "test": "vitest run"
   },
   "dependencies": {

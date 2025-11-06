@@ -125,14 +125,7 @@ export const config = getDefaultConfig({
     [arcTestnet.id]: http(),
     // [arcMainnet.id]: http(),
   },
-  walletConnectParameters: {
-    projectId: walletConnectProjectId,
-    metadata: {
-      name: "Mystery Lottery",
-      description: "Mystery Lottery - Fair & Transparent Prizes",
-      url: resolvedAppUrl,
-      icons: [buildIconUrl("/iso/lg/bird-192.png")],
-    },
-  },
+  appIcon: buildIconUrl("/arc-logo.png"),
+  appDescription: "Mystery Lottery",
   ssr: false,
 });
