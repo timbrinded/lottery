@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { NetworkEnforcementBanner } from '@/components/shared/NetworkEnforcementBanner'
 import { useNetworkEnforcement } from '@/hooks/useNetworkEnforcement'
 
@@ -47,15 +48,90 @@ const featureCards: FeatureCardProps[] = [
 
 const ARC_EXPLORER_TX_BASE_URL = 'https://testnet.arcscan.app/tx/'
 
+const ROUTE_PREFETCH_TARGETS = ['/participant', '/participant/ticket', '/manager', '/manager/create'] as const
+const IMAGE_PREFETCH_TARGETS = [
+  '/hero/lg/hero2.png',
+  '/iso/sm/ticket.png',
+  '/iso/sm/chest.png',
+  '/iso/sm/hourglass.png',
+  '/iso/sm/coins.png',
+] as const
+
 export const Route = createFileRoute('/')({
+  head: () => ({
+    links: [
+      { rel: 'preload', as: 'image', href: '/hero/lg/hero2.png', fetchpriority: 'high' as const },
+      { rel: 'preload', as: 'image', href: '/iso/sm/ticket.png' },
+      { rel: 'preload', as: 'image', href: '/iso/sm/chest.png' },
+      { rel: 'preload', as: 'image', href: '/iso/sm/hourglass.png' },
+      { rel: 'preload', as: 'image', href: '/iso/sm/coins.png' },
+    ],
+  }),
   component: App,
 })
 
 function App() {
   const navigate = useNavigate()
+  const router = useRouter()
   const { isCorrectNetwork } = useNetworkEnforcement()
 
   const { lottery: latestLottery, isLoading: isLatestLoading } = useLatestLottery()
+
+  useEffect(() => {
+    // Prefetch secondary routes during idle time to reduce navigation latency.
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const extendedWindow = window as Window & {
+      requestIdleCallback?: (cb: IdleRequestCallback, options?: IdleRequestOptions) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+
+    const prefetchRoutes = () => {
+      ROUTE_PREFETCH_TARGETS.forEach((to) => {
+        router.preloadRoute({ to }).catch(() => undefined)
+      })
+    }
+
+    let idleHandle: number | undefined
+    let timeoutHandle: number | undefined
+
+    if (extendedWindow.requestIdleCallback) {
+      idleHandle = extendedWindow.requestIdleCallback(prefetchRoutes, { timeout: 2000 })
+    } else {
+      timeoutHandle = window.setTimeout(prefetchRoutes, 300)
+    }
+
+    return () => {
+      if (idleHandle !== undefined && extendedWindow.cancelIdleCallback) {
+        extendedWindow.cancelIdleCallback(idleHandle)
+      }
+      if (timeoutHandle !== undefined) {
+        window.clearTimeout(timeoutHandle)
+      }
+    }
+  }, [router])
+
+  useEffect(() => {
+    // Warm critical imagery so LCP assets are available immediately.
+    if (typeof Image === 'undefined') {
+      return
+    }
+
+    const preloaded = IMAGE_PREFETCH_TARGETS.map((src) => {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = src
+      return img
+    })
+
+    return () => {
+      preloaded.forEach((img) => {
+        img.src = ''
+      })
+    }
+  }, [])
 
   // Coastal-themed CTAs
   const ctaPrimary = {
@@ -142,6 +218,10 @@ function App() {
               <img
                 src="/hero/lg/hero2.png"
                 alt=""
+                width={768}
+                height={512}
+                fetchpriority="high"
+                decoding="async"
                 className="h-full w-full object-cover object-center"
               />
             </div>
@@ -170,7 +250,14 @@ function App() {
                   <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-50" aria-hidden="true" />
                   
                   <div className="absolute right-4 top-4 transition-transform group-hover:scale-110">
-                    <img src="/iso/sm/ticket.png" alt="" className="h-16 w-16 object-contain" />
+                    <img
+                      src="/iso/sm/ticket.png"
+                      alt=""
+                      width={64}
+                      height={64}
+                      decoding="async"
+                      className="h-16 w-16 object-contain"
+                    />
                   </div>
                   <div className="relative">
                     <div className="mb-3 text-3xl font-bold text-foreground drop-shadow-sm">
@@ -203,7 +290,14 @@ function App() {
                   <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/20" aria-hidden="true" />
                   
                   <div className="absolute right-4 top-4 opacity-80 transition-transform group-hover:scale-110">
-                    <img src="/iso/sm/chest.png" alt="" className="h-16 w-16 object-contain drop-shadow-lg" />
+                    <img
+                      src="/iso/sm/chest.png"
+                      alt=""
+                      width={64}
+                      height={64}
+                      decoding="async"
+                      className="h-16 w-16 object-contain drop-shadow-lg"
+                    />
                   </div>
                   <div className="relative">
                     <div className="mb-3 text-3xl font-bold text-white drop-shadow-lg">
@@ -237,28 +331,64 @@ function App() {
                     label="Prize pool"
                     value={prizeValue}
                     hint={prizeHint}
-                    icon={<img src="/iso/sm/coins.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={
+                      <img
+                        src="/iso/sm/coins.png"
+                        alt=""
+                        width={20}
+                        height={20}
+                        decoding="async"
+                        className="w-5 h-5 object-contain"
+                      />
+                    }
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Time left"
                     value={timeValue}
                     hint={timeHint}
-                    icon={<img src="/iso/sm/hourglass.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={
+                      <img
+                        src="/iso/sm/hourglass.png"
+                        alt=""
+                        width={20}
+                        height={20}
+                        decoding="async"
+                        className="w-5 h-5 object-contain"
+                      />
+                    }
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Prizes claimed"
                     value={claimValue}
                     hint={claimHint}
-                    icon={<img src="/iso/sm/chest.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={
+                      <img
+                        src="/iso/sm/chest.png"
+                        alt=""
+                        width={20}
+                        height={20}
+                        decoding="async"
+                        className="w-5 h-5 object-contain"
+                      />
+                    }
                   />
                   <StatCard
                     className="col-span-12 sm:col-span-6 lg:col-span-3"
                     label="Lottery stage"
                     value={stageValue}
                     hint={stageHint}
-                    icon={<img src="/iso/sm/chain.png" alt="" className="w-5 h-5 object-contain" />}
+                    icon={
+                      <img
+                        src="/iso/sm/chain.png"
+                        alt=""
+                        width={20}
+                        height={20}
+                        decoding="async"
+                        className="w-5 h-5 object-contain"
+                      />
+                    }
                   />
                 </div>
               }
@@ -296,7 +426,7 @@ function App() {
 function FeatureCard({ emoji, title, description }: FeatureCardProps) {
   return (
     <article className="mint-sheen flex flex-col gap-3 rounded-[24px] border border-border/50 bg-background/70 p-6 shadow-[var(--shadow-mint-soft)] backdrop-blur">
-      <img src={emoji} alt="" className="w-12 h-12 object-contain" />
+      <img src={emoji} alt="" width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 object-contain" />
       <h3 className="text-xl font-semibold text-foreground">{title}</h3>
       <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
     </article>
