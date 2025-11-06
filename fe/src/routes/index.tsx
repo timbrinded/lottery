@@ -121,7 +121,8 @@ function App() {
     : latestLottery
       ? `${formatEther(latestLottery.totalPrizePool)} USDC`
       : '—'
-  const raffleEntries = latestLottery?.ticketCount ?? 0
+  const raffleCommittedEntries = latestLottery?.committedTickets ?? 0
+  const raffleTotalEntries = latestLottery?.ticketCount ?? 0
   const raffleStatus = getTicketStatus(latestLottery)
   const raffleClaimPercent = latestLottery?.claimPercentage ?? 0
   const proofItems = getProofItems(latestLottery)
@@ -264,7 +265,8 @@ function App() {
                   <RaffleTicket
                     drawId={raffleDrawId}
                     poolEth={rafflePool}
-                    entries={raffleEntries}
+                    committedEntries={raffleCommittedEntries}
+                    totalEntries={raffleTotalEntries}
                     status={raffleStatus}
                     claimedPrizes={claimedPrizes}
                     totalPrizes={totalPrizes}
@@ -470,7 +472,13 @@ function getProofItems(
   return [
     { label: 'Commit hash', value: truncateMiddle(lottery.creatorCommitment) },
     { label: 'Random seed', value: formatRandomSeed(lottery.randomSeed) },
-    { label: 'Tickets committed', value: lottery.ticketCount.toLocaleString() },
+    {
+      label: 'Tickets committed',
+      value:
+        lottery.ticketCount > 0
+          ? `${lottery.committedTickets.toLocaleString()} / ${lottery.ticketCount.toLocaleString()}`
+          : lottery.committedTickets.toLocaleString(),
+    },
     { label: 'Prizes claimed', value: formatPrizeClaims(lottery) },
   ]
 }

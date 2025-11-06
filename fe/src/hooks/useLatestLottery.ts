@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useReadContracts } from 'wagmi';
+import { useQuery } from '@tanstack/react-query';
+import { usePublicClient, useReadContracts } from 'wagmi';
 import {
   useLotteryFactoryAddress,
   useReadLotteryFactory,
@@ -18,6 +19,7 @@ export type LatestLotteryData = {
   state: number;
   createdAt: bigint;
   ticketCount: number;
+  committedTickets: number;
   totalPrizes: number;
   claimedPrizes: number;
   unclaimedPrizes: number;
@@ -104,29 +106,45 @@ export function useLatestLottery(): LatestLotteryResult {
     return 0;
   }, [latestLotteryData]);
 
-  const ticketDetailContracts = useMemo(() => {
-    if (!contractAddress || latestLotteryId === null || ticketCount === 0) {
-      return [] as any[];
-    }
-
-    return Array.from({ length: ticketCount }, (_, index) => ({
-      address: contractAddress as `0x${string}`,
-      abi: LOTTERY_FACTORY_ABI as any,
-      functionName: 'tickets',
-      args: [latestLotteryId, BigInt(index)],
-    }));
-  }, [contractAddress, latestLotteryId, ticketCount]);
-
+  const publicClient = usePublicClient();
   const {
-    data: ticketDetailsData,
+    data: ticketDetailsData = [],
     isLoading: isTicketDetailsLoading,
-  } = useReadContracts({
-    contracts: ticketDetailContracts,
-    query: {
-      enabled: ticketDetailContracts.length > 0,
-      refetchInterval: 10_000,
+    isFetching: isTicketDetailsFetching,
+  } = useQuery({
+    queryKey: [
+      'latestLottery',
+      latestLotteryId ? latestLotteryId.toString() : 'none',
+      'ticketDetails',
+      ticketCount,
+    ],
+    enabled:
+      Boolean(publicClient) &&
+      Boolean(contractAddress) &&
+      latestLotteryId !== null &&
+      ticketCount > 0,
+    refetchInterval: 10_000,
+    queryFn: async () => {
+      if (!publicClient || latestLotteryId === null || ticketCount === 0 || !contractAddress) {
+        return [];
+      }
+
+      const contractsBatch = Array.from({ length: ticketCount }, (_, index) => ({
+        address: contractAddress as `0x${string}`,
+        abi: LOTTERY_FACTORY_ABI as any,
+        functionName: 'tickets',
+        args: [latestLotteryId, BigInt(index)],
+      }));
+
+      const results = await publicClient.multicall({
+        contracts: contractsBatch,
+        allowFailure: true,
+      });
+
+      return results;
     },
   });
+  const isTicketDetailsPending = isTicketDetailsLoading || isTicketDetailsFetching;
 
   const prizeContracts = useMemo(() => {
     if (!contractAddress || latestLotteryId === null) {
@@ -174,11 +192,20 @@ export function useLatestLottery(): LatestLotteryResult {
 
     let ticketPrizeCount = 0;
     let claimedPrizes = 0;
+    let committedTickets = 0;
 
     if (ticketsInfo.length > 0) {
       ticketsInfo.forEach((ticketResult) => {
         if (ticketResult?.status === 'success' && Array.isArray(ticketResult.result)) {
-          const [, , redeemed, prizeAmount] = ticketResult.result as [string, boolean, boolean, bigint];
+          const [, committed, redeemed, prizeAmount] = ticketResult.result as [
+            string,
+            boolean,
+            boolean,
+            bigint
+          ];
+          if (committed) {
+            committedTickets += 1;
+          }
           if (prizeAmount > 0n) {
             ticketPrizeCount += 1;
             if (redeemed) {
@@ -213,6 +240,7 @@ export function useLatestLottery(): LatestLotteryResult {
       state: Number(data[7]),
       createdAt: data[8] as bigint,
       ticketCount: ticketArray.length,
+      committedTickets,
       totalPrizes,
       claimedPrizes,
       unclaimedPrizes,
@@ -223,7 +251,7 @@ export function useLatestLottery(): LatestLotteryResult {
 
   return {
     lottery,
-    isLoading: isCounterLoading || isLatestLoading || isTicketDetailsLoading || isPrizeLoading,
+    isLoading: isCounterLoading || isLatestLoading || isTicketDetailsPending || isPrizeLoading,
     error: (latestLotteryError as Error | null) ?? (counterError as Error | null),
     hasLottery: lottery !== null,
     lotteryId: latestLotteryId,

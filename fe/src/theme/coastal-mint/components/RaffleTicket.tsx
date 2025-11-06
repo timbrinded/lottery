@@ -5,7 +5,8 @@ type TicketStatus = 'unclaimed' | 'claimed' | 'pending' | 'settling'
 type RaffleTicketProps = {
   drawId: string
   poolEth: string
-  entries: number
+  committedEntries?: number
+  totalEntries?: number
   status: TicketStatus
   claimedPrizes?: number
   totalPrizes?: number
@@ -23,7 +24,8 @@ const STATUS_MAP: Record<TicketStatus, { label: string; badgeClass: string }> = 
 export function RaffleTicket({
   drawId,
   poolEth,
-  entries,
+  committedEntries = 0,
+  totalEntries,
   status,
   claimedPrizes = 0,
   totalPrizes = 0,
@@ -37,6 +39,13 @@ export function RaffleTicket({
     totalPrizes > 0
       ? `${claimedPrizes} of ${totalPrizes} prizes redeemed`
       : 'Reveal to assign prize claims'
+  const committedCount = Math.max(committedEntries, 0)
+  const totalCount = Math.max(totalEntries ?? committedCount, 0)
+  const clampedCommitted = totalCount > 0 ? Math.min(committedCount, totalCount) : committedCount
+  const entriesDisplay =
+    totalCount > 0
+      ? `${clampedCommitted.toLocaleString()} / ${totalCount.toLocaleString()}`
+      : clampedCommitted.toLocaleString()
 
   return (
     <article 
@@ -119,8 +128,8 @@ export function RaffleTicket({
           <p className="text-3xl font-bold text-amber-950" style={{ fontFamily: '"Caveat", cursive' }}>{displayClaimPercent}</p>
           <p className="text-sm text-amber-900/70" style={{ fontFamily: '"Caveat", cursive' }}>{claimSummary}</p>
           <div className="mt-4 flex items-center justify-between rounded-lg bg-amber-900/10 px-3 py-2 text-xs text-amber-900/80 border border-amber-900/20">
-            <span className="uppercase tracking-[0.2em]" style={{ fontFamily: '"Caveat", cursive' }}>Entries committed</span>
-            <span className="text-sm font-bold text-amber-950" style={{ fontFamily: '"Caveat", cursive' }}>{entries}</span>
+            <span className="uppercase tracking-[0.2em]" style={{ fontFamily: '"Caveat", cursive' }}>Tickets committed</span>
+            <span className="text-sm font-bold text-amber-950" style={{ fontFamily: '"Caveat", cursive' }}>{entriesDisplay}</span>
           </div>
         </div>
       </div>
