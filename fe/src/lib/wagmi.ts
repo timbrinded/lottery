@@ -92,15 +92,47 @@ console.log(
   availableChains.map((c) => c.name).join(", ")
 );
 
+const walletConnectProjectId =
+  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID &&
+  import.meta.env.VITE_WALLETCONNECT_PROJECT_ID !== "YOUR_PROJECT_ID"
+    ? import.meta.env.VITE_WALLETCONNECT_PROJECT_ID
+    : undefined;
+
+if (!walletConnectProjectId || walletConnectProjectId.trim().length === 0) {
+  const message =
+    "VITE_WALLETCONNECT_PROJECT_ID is not configured. Set it to a valid WalletConnect Cloud project ID so wallet connections succeed.";
+  throw new Error(message);
+}
+
+const appUrlFromEnv = import.meta.env.VITE_PUBLIC_APP_URL?.trim();
+const resolvedAppUrl =
+  appUrlFromEnv && appUrlFromEnv.length > 0
+    ? appUrlFromEnv
+    : typeof window !== "undefined" && window.location
+      ? window.location.origin
+      : "http://localhost:5173";
+
+const buildIconUrl = (path: string) =>
+  new URL(path, resolvedAppUrl).toString();
+
 // Wagmi configuration with RainbowKit
 export const config = getDefaultConfig({
   appName: "Mystery Lottery",
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID", // Get from WalletConnect Cloud
+  projectId: walletConnectProjectId,
   chains: availableChains as any,
   transports: {
     [localhost.id]: http(),
     [arcTestnet.id]: http(),
     // [arcMainnet.id]: http(),
+  },
+  walletConnectParameters: {
+    projectId: walletConnectProjectId,
+    metadata: {
+      name: "Mystery Lottery",
+      description: "Mystery Lottery - Fair & Transparent Prizes",
+      url: resolvedAppUrl,
+      icons: [buildIconUrl("/iso/lg/bird-192.png")],
+    },
   },
   ssr: false,
 });
