@@ -280,11 +280,11 @@ function ManagerDashboard() {
                 }
               />
             ) : (
-              <Alert>
-                <AlertDescription>
-                  No lotteries found with filter: {filter}
-                </AlertDescription>
-              </Alert>
+              <EmptyState
+                illustration="/iso/lg/skeleton.png"
+                title="No lotteries found"
+                description={`You don't have any ${filter === "all" ? "" : filter + " "}lotteries at the moment.`}
+              />
             )
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
